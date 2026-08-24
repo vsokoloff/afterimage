@@ -238,3 +238,35 @@ export async function updateIncident(
   await writeJson(incidentPath(store, incidentId), next)
   return next
 }
+
+export type UpdateRunPatch = Partial<Pick<RunRecord, 'status' | 'endedAt' | 'agentId'>>
+
+/** Update run metadata (status / endedAt) and return the full run with events. */
+export async function updateRun(
+  store: LucidStore,
+  runId: string,
+  patch: UpdateRunPatch,
+): Promise<AgentRun> {
+  const meta = await readJson<RunRecord>(runMetaPath(store, runId))
+  if (!meta) {
+    throw new Error(`Unknown run: ${runId}`)
+  }
+  const next: RunRecord = { ...meta, ...patch, id: meta.id }
+  await writeJson(runMetaPath(store, runId), next)
+  const run = await getRun(store, runId)
+  if (!run) throw new Error(`Unknown run: ${runId}`)
+  return run
+}
+
+/** List all persisted incidents. Newest createdAt first. */
+export async function listIncidents(store: LucidStore): Promise<Incident[]> {
+  await ensureDirs(store)
+  const files = await readdir(incidentsDir(store))
+  const incidents: Incident[] = []
+  for (const name of files) {
+    if (!name.endsWith('.json')) continue
+    const incident = await readJson<Incident>(path.join(incidentsDir(store), name))
+    if (incident) incidents.push(incident)
+  }
+  return incidents.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
