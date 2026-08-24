@@ -3,6 +3,7 @@
  * Persisted under `.lucid/incidents/` — separate from VisitCase fixtures.
  */
 import type { StructuredTreatment } from './treatment/types.ts'
+import type { TreatmentApplicationRecord } from './treatment/adapters/types.ts'
 
 export type IncidentStatus = 'open' | 'in_hospital' | 'cleared' | 'closed'
 
@@ -18,6 +19,8 @@ export type Incident = {
   disease?: string
   /** Structured treatment persisted after root-cause diagnosis. */
   treatment?: StructuredTreatment
+  /** Last applied treatment artifact (Lucid agent config — not app code). */
+  treatmentApplication?: TreatmentApplicationRecord
   createdAt: string
   updatedAt: string
 }

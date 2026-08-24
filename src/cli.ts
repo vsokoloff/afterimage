@@ -18,6 +18,7 @@ import {
   resolveWebBaseUrl,
 } from './runtime/policy.ts'
 import { openStore } from './store.ts'
+import { parseFixArgv, runFixCommand } from './treatment/index.ts'
 
 const USAGE = `Lucid hospital (local)
 
@@ -32,7 +33,7 @@ Commands:
   status           Show fixture incident status
   doctor           Run Looping → repeated-file-state on the fixture
   inspect          Show evidence + diagnosis for the fixture
-  fix              Show prescribed treatment (review required)
+  fix <incident-id>  Review and optionally apply treatment for a real incident
   recheck          Verify the post-treatment fixture trace
   departments      List departments and disease status
 
@@ -43,6 +44,9 @@ Run options:
 
   npm run lucid -- run -- node -e "console.log('hi')"
   npm run lucid -- run --policy observe -- node ./agent.mjs
+  npm run lucid -- fix inc_abc123
+  npm run lucid -- fix inc_abc123 --apply --yes
+  npm run lucid -- fix inc_abc123 --rollback --yes
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
@@ -151,24 +155,29 @@ function cmdInspect(): void {
   }
 }
 
-function cmdFix(): void {
-  const disease = getPrimaryDisease()
-  const diagnosis = disease.diagnose(fixtureBefore(), contextFromCase())
-  const plan = disease.recommendFix(diagnosis, contextFromCase())
-  if (!plan) {
-    console.log('fix: nothing to prescribe (no abnormality).')
-    return
+async function cmdFix(): Promise<number> {
+  const parsed = parseFixArgv(process.argv)
+  if (!parsed) {
+    console.error('Usage: npm run lucid -- fix <incident-id> [--apply] [--yes] [--rollback]')
+    return 1
   }
-  console.log('fix — prescribed treatment')
-  console.log(`  target:      ${plan.target}`)
-  console.log(`  change:      ${plan.recommendedChange}`)
-  console.log(`  instruction: ${plan.recommendedInstruction}`)
-  console.log(`  why:         ${plan.why}`)
-  console.log(`  review:      ${plan.requiresReview ? 'required' : 'optional'}`)
-  console.log(`  auto-apply:  ${plan.safeToAutoApply ? 'allowed' : 'blocked (unsafe without review)'}`)
-  console.log()
-  console.log('Not applied. Unsafe / instruction changes require explicit review.')
-  console.log('(Future: lucid fix --apply after confirmation.)')
+
+  const store = await openStore()
+  const result = await runFixCommand({
+    incidentId: parsed.incidentId,
+    store,
+    apply: parsed.apply,
+    yes: parsed.yes,
+    rollback: parsed.rollback,
+    confirm: parsed.yes
+      ? undefined
+      : async (message) => {
+          console.error(message)
+          console.error('Re-run with --yes to confirm.')
+          return false
+        },
+  })
+  return result.exitCode
 }
 
 function cmdRecheck(): void {
@@ -231,7 +240,7 @@ async function main(): Promise<void> {
       cmdInspect()
       break
     case 'fix':
-      cmdFix()
+      process.exitCode = await cmdFix()
       break
     case 'recheck':
       cmdRecheck()

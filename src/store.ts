@@ -6,6 +6,7 @@ import type { AgentEvent, AgentRun, AgentRunStatus } from './events.ts'
 import { newId } from './ids.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
 import type { StructuredTreatment } from './treatment/types.ts'
+import type { TreatmentApplicationRecord } from './treatment/adapters/types.ts'
 
 export type LucidStore = {
   /** Absolute path to the `.lucid` directory. */
@@ -173,6 +174,7 @@ export type CreateIncidentInput = {
   department?: string
   disease?: string
   treatment?: StructuredTreatment
+  treatmentApplication?: TreatmentApplicationRecord
   createdAt?: string
 }
 
@@ -193,6 +195,7 @@ export async function createIncident(
     department: input.department,
     disease: input.disease,
     treatment: input.treatment,
+    treatmentApplication: input.treatmentApplication,
     createdAt: now,
     updatedAt: now,
   }
@@ -215,7 +218,15 @@ export async function getIncident(
 export type UpdateIncidentPatch = Partial<
   Pick<
     Incident,
-    'runId' | 'agentId' | 'title' | 'symptom' | 'status' | 'department' | 'disease' | 'treatment'
+    | 'runId'
+    | 'agentId'
+    | 'title'
+    | 'symptom'
+    | 'status'
+    | 'department'
+    | 'disease'
+    | 'treatment'
+    | 'treatmentApplication'
   >
 >
 
