@@ -1,7 +1,10 @@
 import { getDisease } from './departments/index.ts'
-import type { Abnormality } from './departments/types.ts'
+import { shortDigest } from './departments/looping/repeated-file-state/detect.ts'
+import type { Abnormality, DiagnosisResult, TreatmentPlan, VerificationResult } from './departments/types.ts'
 import type { AgentEvent, AgentRun, FileWriteEvent } from './events.ts'
+import { successfulFileWriteEvents } from './events.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
+import type { RootCause } from './types.ts'
 import {
   getIncident,
   getRun,
@@ -35,6 +38,28 @@ export type FileStateRef = {
   contentHashInput?: string
 }
 
+export type HashChainStep = {
+  sequence: number
+  eventId: string
+  path: string
+  shortHash: string
+  role: 'first-seen' | 'intermediate' | 'repeated'
+}
+
+export type IncidentDiagnosis = {
+  department: string
+  disease: string
+  status: 'critical' | 'clear'
+  symptom: string
+  evidence: string
+}
+
+export type IncidentRecheck = {
+  available: boolean
+  passed: boolean | null
+  evidence: string
+}
+
 export type IncidentDetailResponse = {
   incident: Incident
   run: AgentRun | null
@@ -52,6 +77,11 @@ export type IncidentDetailResponse = {
     firstSeen: FileStateRef
     repeated: FileStateRef
   } | null
+  hashChain: HashChainStep[]
+  diagnosis: IncidentDiagnosis | null
+  rootCause: RootCause | null
+  treatment: TreatmentPlan | null
+  recheck: IncidentRecheck
 }
 
 function findEvent(run: AgentRun, eventId: string): AgentEvent | undefined {
@@ -98,23 +128,81 @@ function evidenceEventsFromAbnormality(run: AgentRun, abnormality: Abnormality):
   return run.events.filter((event) => ids.has(event.id))
 }
 
-async function diagnoseIncident(
+function buildHashChain(
+  run: AgentRun,
+  fileStates: NonNullable<IncidentDetailResponse['fileStates']>,
+): HashChainStep[] {
+  const writes = successfulFileWriteEvents(run.events).filter(
+    (write) =>
+      write.path === fileStates.file &&
+      write.sequence >= fileStates.firstSeen.sequence &&
+      write.sequence <= fileStates.repeated.sequence,
+  )
+
+  return writes.map((write) => ({
+    sequence: write.sequence,
+    eventId: write.id,
+    path: write.path,
+    shortHash: shortDigest(write.hash),
+    role:
+      write.id === fileStates.firstSeen.eventId
+        ? 'first-seen'
+        : write.id === fileStates.repeated.eventId
+          ? 'repeated'
+          : 'intermediate',
+  }))
+}
+
+function buildRecheck(
+  disease: ReturnType<typeof getDisease>,
+  run: AgentRun | null,
+  diagnosis: DiagnosisResult | null,
+): IncidentRecheck {
+  if (!disease || !run || !diagnosis?.abnormality) {
+    return {
+      available: false,
+      passed: null,
+      evidence: 'No post-treatment run recorded yet.',
+    }
+  }
+
+  const verification: VerificationResult = disease.verify({ run }, { events: [] })
+  return {
+    available: true,
+    passed: verification.passed,
+    evidence: verification.evidence,
+  }
+}
+
+async function enrichIncident(
   incident: Incident,
   run: AgentRun | null,
 ): Promise<{
   severity: 'critical' | 'clear' | 'unknown'
   evidence: string
-  abnormality: Abnormality | null
   evidenceEvents: AgentEvent[]
   fileStates: IncidentDetailResponse['fileStates']
+  hashChain: HashChainStep[]
+  diagnosis: IncidentDiagnosis | null
+  rootCause: RootCause | null
+  treatment: TreatmentPlan | null
+  recheck: IncidentRecheck
 }> {
   if (!run || !incident.department || !incident.disease) {
     return {
       severity: 'unknown',
       evidence: incident.symptom ?? '',
-      abnormality: null,
       evidenceEvents: [],
       fileStates: null,
+      hashChain: [],
+      diagnosis: null,
+      rootCause: null,
+      treatment: null,
+      recheck: {
+        available: false,
+        passed: null,
+        evidence: 'No linked run or detector metadata.',
+      },
     }
   }
 
@@ -123,21 +211,50 @@ async function diagnoseIncident(
     return {
       severity: 'unknown',
       evidence: incident.symptom ?? '',
-      abnormality: null,
       evidenceEvents: [],
       fileStates: null,
+      hashChain: [],
+      diagnosis: null,
+      rootCause: null,
+      treatment: null,
+      recheck: {
+        available: false,
+        passed: null,
+        evidence: 'Unknown detector plugin.',
+      },
     }
   }
 
   const diagnosis = disease.diagnose({ run })
   const abnormality = diagnosis.abnormality
+  const fileStates = abnormality ? fileStatesFromAbnormality(run, abnormality) : null
+  const treatment = disease.recommendFix(diagnosis)
+
   return {
     severity: diagnosis.status,
     evidence: diagnosis.evidence,
-    abnormality,
     evidenceEvents: abnormality ? evidenceEventsFromAbnormality(run, abnormality) : [],
-    fileStates: abnormality ? fileStatesFromAbnormality(run, abnormality) : null,
+    fileStates,
+    hashChain: fileStates ? buildHashChain(run, fileStates) : [],
+    diagnosis: {
+      department: diagnosis.department,
+      disease: diagnosis.disease,
+      status: diagnosis.status,
+      symptom: diagnosis.symptom,
+      evidence: diagnosis.evidence,
+    },
+    rootCause: diagnosis.rootCause,
+    treatment,
+    recheck: buildRecheck(disease, run, diagnosis),
   }
+}
+
+async function diagnoseIncident(
+  incident: Incident,
+  run: AgentRun | null,
+): Promise<{ severity: 'critical' | 'clear' | 'unknown' }> {
+  const enriched = await enrichIncident(incident, run)
+  return { severity: enriched.severity }
 }
 
 export async function fetchRuns(store: LucidStore): Promise<RunsListResponse> {
@@ -174,10 +291,7 @@ export async function fetchIncident(
   if (!incident) return null
 
   const run = incident.runId ? await getRun(store, incident.runId) : null
-  const { severity, evidence, evidenceEvents, fileStates } = await diagnoseIncident(
-    incident,
-    run,
-  )
+  const enriched = await enrichIncident(incident, run)
 
   return {
     incident,
@@ -186,10 +300,15 @@ export async function fetchIncident(
       incident.department && incident.disease
         ? { department: incident.department, disease: incident.disease }
         : null,
-    severity,
+    severity: enriched.severity,
     status: incident.status,
-    evidence,
-    evidenceEvents,
-    fileStates,
+    evidence: enriched.evidence,
+    evidenceEvents: enriched.evidenceEvents,
+    fileStates: enriched.fileStates,
+    hashChain: enriched.hashChain,
+    diagnosis: enriched.diagnosis,
+    rootCause: enriched.rootCause,
+    treatment: enriched.treatment,
+    recheck: enriched.recheck,
   }
 }

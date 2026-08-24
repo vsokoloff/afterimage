@@ -11,20 +11,6 @@ const staticFiles = new Map([
   ['/', { file: resolve(process.cwd(), 'web/index.html'), type: 'text/html; charset=utf-8' }],
   ['/styles.css', { file: resolve(process.cwd(), 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/app.js', { file: resolve(process.cwd(), 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
-  [
-    '/characters.js',
-    {
-      file: resolve(process.cwd(), 'web/characters.js'),
-      type: 'text/javascript; charset=utf-8',
-    },
-  ],
-  [
-    '/data/agents.js',
-    {
-      file: resolve(process.cwd(), 'web/data/agents.js'),
-      type: 'text/javascript; charset=utf-8',
-    },
-  ],
 ])
 
 export type ServerContext = {

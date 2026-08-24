@@ -1,42 +1,7 @@
-import {
-  activitySeed,
-  agents as agentFixtures,
-  hospitalDepartments,
-  suggestAgents,
-} from './data/agents.js'
-import { agentCharacter, moodForStatus } from './characters.js'
-
-/** Auth alone gets a worried face while unhealthy; others stay cheerful. */
-function characterMood(agent) {
-  return agent.id === 'auth' ? moodForStatus(agent.status) : 'cheerful'
-}
-
 const content = document.querySelector('#content')
 const crumb = document.querySelector('#crumb')
 const bootError = document.querySelector('#boot-error')
 const nav = document.querySelector('#nav')
-
-const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const wait = (ms) => (reduced ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)))
-
-/** @type {typeof agentFixtures} */
-let agents = structuredClone(agentFixtures)
-/** @type {typeof activitySeed} */
-let activity = structuredClone(activitySeed)
-/** @type {Record<string, any>} */
-const visitCache = {}
-/** @type {Record<string, HospitalState>} */
-const hospitalState = {}
-
-/**
- * @typedef {{
- *   step: 'tests' | 'diagnosis' | 'root' | 'treatment' | 'recheck' | 'cleared'
- *   tests: Array<{ id: string, name: string, result: 'pending' | 'clear' | 'abnormal' | 'stub', detail: string, real: boolean }>
- *   testsRunning: boolean
- *   treatmentSimulated: boolean
- *   recheckDone: boolean
- * }} HospitalState
- */
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -48,90 +13,16 @@ function el(tag, className, text) {
 function parseRoute() {
   const raw = (location.hash || '#/incidents').replace(/^#/, '')
   const parts = raw.split('/').filter(Boolean)
-  const page = parts[0] || 'incidents'
-
-  if (page === 'incidents' && parts[1]) {
-    return { page: 'incident', agentId: parts[1] }
+  if (parts[0] === 'incidents' && parts[1]) {
+    return { page: 'incident', incidentId: parts[1] }
   }
-  if (page === 'incidents' || page === 'hospital') {
-    return { page: 'incidents' }
-  }
-  if (page === 'agents' && parts[1] && parts[2] === 'hospital') {
-    return { page: 'incident', agentId: parts[1] }
-  }
-  if (page === 'agents' && parts[1]) {
-    return { page: 'agent', agentId: parts[1] }
-  }
-  if (page === 'agents') return { page: 'agents' }
-  if (page === 'activity') return { page: 'activity' }
-  if (page === 'memory') return { page: 'memory' }
   return { page: 'incidents' }
 }
 
 function setActiveNav(route) {
-  const key =
-    route.page === 'incident' || route.page === 'incidents'
-      ? 'incidents'
-      : route.page === 'agent' || route.page === 'agents'
-        ? 'agents'
-        : route.page
-
   nav.querySelectorAll('.nav-item').forEach((link) => {
-    link.classList.toggle('is-active', link.dataset.route === key)
+    link.classList.toggle('is-active', link.dataset.route === 'incidents')
   })
-}
-
-/** Open an incident straight into Hospital diagnostics (no Agents → View gate). */
-function openIncident(agent) {
-  if (agent.status !== 'cleared' && agent.status !== 'in_hospital') {
-    agent.status = 'in_hospital'
-    agent.currentActivity = 'Admitted to Hospital for diagnostics'
-    pushActivity(`${agent.name} opened from Incidents`, agent.id)
-  }
-  location.hash = `#/incidents/${agent.id}`
-}
-
-function openIncidents() {
-  const open = agents.filter((a) =>
-    a.hospitalEligible && ['critical', 'degraded', 'in_hospital'].includes(a.status),
-  )
-  const recent = agents.filter((a) => a.hospitalEligible && a.status === 'cleared')
-  return { open, recent }
-}
-
-function getAgent(id) {
-  return agents.find((a) => a.id === id) ?? null
-}
-
-function statusBadge(status) {
-  const label =
-    {
-      healthy: 'Healthy',
-      degraded: 'Degraded',
-      critical: 'Unhealthy',
-      in_hospital: 'In hospital',
-      cleared: 'Cleared',
-    }[status] ?? status
-  return el('span', `badge badge--${status}`, label)
-}
-
-function healthClass(score) {
-  if (score < 40) return 'is-low'
-  if (score < 70) return 'is-mid'
-  return ''
-}
-
-function pushActivity(text, agentId = null, kind = 'hospital') {
-  activity = [
-    {
-      id: `evt-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-      at: new Date().toISOString(),
-      kind,
-      agentId,
-      text,
-    },
-    ...activity,
-  ]
 }
 
 function formatTime(iso) {
@@ -147,65 +38,29 @@ function formatTime(iso) {
   }
 }
 
-async function loadVisit(agentId) {
-  if (visitCache[agentId]) return visitCache[agentId]
-  const response = await fetch('/api/visit')
-  if (!response.ok) throw new Error(`Visit failed (${response.status})`)
-  const data = await response.json()
-  visitCache[agentId] = data
-  return data
+function statusBadge(status, severity) {
+  const label =
+    {
+      open: 'Open',
+      in_hospital: 'In hospital',
+      cleared: 'Cleared',
+      closed: 'Closed',
+    }[status] ?? status
+  const cls =
+    severity === 'critical'
+      ? 'badge badge--critical'
+      : status === 'cleared' || status === 'closed'
+        ? 'badge badge--cleared'
+        : 'badge badge--open'
+  return el('span', cls, label)
 }
 
-function ensureHospitalState(agent) {
-  if (hospitalState[agent.id]) return hospitalState[agent.id]
-  hospitalState[agent.id] = {
-    step: 'tests',
-    tests: hospitalDepartments.map((d) => ({
-      id: d.id,
-      name: d.name,
-      result: 'pending',
-      detail: d.real ? 'Waiting to run real detector…' : 'Mock department — not shipped',
-      real: d.real,
-    })),
-    testsRunning: false,
-    treatmentSimulated: false,
-    recheckDone: false,
+async function fetchJson(url) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status})`)
   }
-  return hospitalState[agent.id]
-}
-
-function renderHashChain(edits) {
-  const wrap = el('div', 'hash-chain')
-  edits.forEach((edit, index) => {
-    if (index > 0) wrap.append(el('span', 'hash-arrow', '→'))
-    const chip = el(
-      'span',
-      `hash-chip${edit.evidenceRole === 'repeated' || edit.evidenceRole === 'first-seen' ? ' is-repeat' : ''}`,
-      edit.shortHash,
-    )
-    wrap.append(chip)
-  })
-  return wrap
-}
-
-function renderTurns(edits) {
-  const list = el('ol', 'turns')
-  for (const edit of edits) {
-    const item = el('li', `turn${edit.evidenceRole === 'repeated' ? ' is-repeat' : ''}`)
-    const top = el('div', 'turn-top')
-    top.append(el('span', '', `Turn ${edit.turn}`), el('code', '', edit.file))
-    item.append(top, el('p', 'intent', edit.intent), el('code', 'hash', edit.shortHash))
-    if (edit.evidenceRole === 'repeated') {
-      item.append(el('p', 'activity-line', 'State seen before'))
-    }
-    if (edit.feedback) {
-      const fb = el('div', 'feedback')
-      fb.append(el('strong', '', `${edit.feedback.kind}: `), document.createTextNode(edit.feedback.text))
-      item.append(fb)
-    }
-    list.append(item)
-  }
-  return list
+  return response.json()
 }
 
 function facts(rows) {
@@ -218,847 +73,299 @@ function facts(rows) {
   return dl
 }
 
-/* ─── Pages ─── */
-
-async function renderIncidentsPage() {
-  crumb.textContent = 'Incidents'
-  content.replaceChildren()
-
-  const head = el('div', 'page-head')
-  head.append(
-    el('h1', '', 'Incidents'),
-    el('p', '', 'Open failures first. Open one to run Hospital diagnostics — no Agents browsing required.'),
-  )
-
-  const { open, recent } = openIncidents()
-  const list = el('div', 'incident-list')
-
-  if (!open.length && !recent.length) {
-    list.append(el('p', 'empty', 'No hospital-eligible incidents right now.'))
-    content.append(head, list)
-    return
+function section(title, body) {
+  const wrap = el('section', 'record-section')
+  wrap.append(el('h2', 'record-section-title', title))
+  if (typeof body === 'string') {
+    wrap.append(el('p', 'record-copy', body))
+  } else {
+    wrap.append(body)
   }
-
-  if (open.length) {
-    list.append(el('h2', 'incident-group-title', 'Needs attention'))
-    for (const agent of open) {
-      list.append(await incidentCard(agent))
-    }
-  }
-
-  if (recent.length) {
-    list.append(el('h2', 'incident-group-title', 'Recently cleared'))
-    for (const agent of recent) {
-      list.append(await incidentCard(agent))
-    }
-  }
-
-  content.append(head, list)
+  return wrap
 }
 
-async function incidentCard(agent) {
+function emptyState(message) {
+  return el('p', 'empty', message)
+}
+
+function renderIncidentCard(incident) {
   const card = el('button', 'incident-card', '')
   card.type = 'button'
-  card.addEventListener('click', () => openIncident(agent))
+  card.addEventListener('click', () => {
+    location.hash = `#/incidents/${incident.id}`
+  })
 
   const top = el('div', 'incident-card-top')
-  const identity = el('div', 'agent-card-identity')
-  identity.append(
-    agentCharacter(agent.id, { size: 'md', mood: characterMood(agent) }),
-    (() => {
-      const text = document.createElement('div')
-      text.append(
-        el('h2', '', agent.name),
-        el('p', 'role', agent.currentActivity),
-      )
-      return text
-    })(),
+  const copy = document.createElement('div')
+  copy.append(
+    el('h2', '', incident.title),
+    el('p', 'incident-meta', `${incident.department ?? '—'} / ${incident.disease ?? '—'}`),
   )
-  top.append(identity, statusBadge(agent.status))
+  top.append(copy, statusBadge(incident.status, incident.severity))
   card.append(top)
 
-  let symptom = agent.healthByDepartment.find((d) => d.status === 'abnormal')?.note
-    ?? agent.currentActivity
-  if (agent.usesRealVisit) {
-    try {
-      const visit = await loadVisit(agent.id)
-      symptom = visit.symptom
-      card.append(
-        el(
-          'p',
-          'incident-meta',
-          `${visit.hospital.department} / ${visit.hospital.disease}`,
-        ),
-      )
-    } catch {
-      /* list still works without visit */
-    }
-  } else {
-    card.append(el('p', 'incident-meta', 'Mock hospital path'))
+  if (incident.symptom) {
+    card.append(el('p', 'incident-symptom', incident.symptom))
   }
-
-  card.append(el('p', 'incident-symptom', symptom))
 
   const foot = el('div', 'incident-card-foot')
   foot.append(
-    el('span', 'btn btn-ghost', agent.status === 'cleared' ? 'Open record' : 'Open diagnostics'),
+    el('span', 'incident-meta', formatTime(incident.updatedAt)),
+    el('span', 'btn btn-ghost', 'Open record'),
   )
   card.append(foot)
   return card
 }
 
-function renderAgentsPage() {
-  crumb.textContent = 'Agents'
+async function renderIncidentsPage() {
+  crumb.textContent = 'Incidents'
+  content.replaceChildren(el('p', 'activity-line', 'Loading incidents…'))
+
+  const data = await fetchJson('/api/incidents')
   content.replaceChildren()
 
   const head = el('div', 'page-head')
   head.append(
-    el('h1', '', 'Agents'),
-    el('p', '', 'Optional roster. For broken agents, start from Incidents instead.'),
+    el('h1', '', 'Incidents'),
+    el('p', '', 'Open loops and recently cleared cases from local agent runs.'),
   )
+  content.append(head)
 
-  const routeBox = el('div', 'route-box')
-  const label = el('label', '', 'What needs to get done?')
-  label.htmlFor = 'task-input'
-  const row = el('div', 'route-row')
-  const input = document.createElement('input')
-  input.id = 'task-input'
-  input.type = 'text'
-  input.placeholder = 'e.g. fix auth loop, write tests, research looping…'
-  const routeBtn = el('button', 'btn btn-primary', 'Route')
-  routeBtn.type = 'button'
-  row.append(input, routeBtn)
-  const suggestions = el('ul', 'suggestions')
-  routeBox.append(label, row, suggestions)
+  const open = data.incidents.filter((i) => ['open', 'in_hospital'].includes(i.status))
+  const cleared = data.incidents.filter((i) => ['cleared', 'closed'].includes(i.status))
 
-  const applySuggestions = () => {
-    suggestions.replaceChildren()
-    for (const agent of suggestAgents(input.value)) {
-      const li = el('li', '')
-      const link = el('a', 'suggestion', '')
-      link.href = `#/agents/${agent.id}`
-      link.append(
-        agentCharacter(agent.id, { size: 'sm', mood: characterMood(agent) }),
-        el('strong', '', agent.name),
-        document.createTextNode(agent.role),
-      )
-      li.append(link)
-      suggestions.append(li)
-    }
-  }
-
-  routeBtn.addEventListener('click', applySuggestions)
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') applySuggestions()
-  })
-
-  const toolbar = el('div', 'toolbar')
-  const search = document.createElement('input')
-  search.type = 'search'
-  search.placeholder = 'Search agents…'
-  search.setAttribute('aria-label', 'Search agents')
-  toolbar.append(search)
-
-  const grid = el('div', 'agent-grid')
-
-  const paintCards = () => {
-    const q = search.value.trim().toLowerCase()
-    grid.replaceChildren()
-    const list = agents.filter((a) => {
-      if (!q) return true
-      return (
-        a.name.toLowerCase().includes(q) ||
-        a.role.toLowerCase().includes(q) ||
-        a.skills.some((s) => s.toLowerCase().includes(q))
-      )
-    })
-    for (const agent of list) {
-      grid.append(agentCard(agent))
-    }
-    if (!list.length) grid.append(el('p', 'empty', 'No agents match.'))
-  }
-
-  search.addEventListener('input', paintCards)
-  paintCards()
-
-  content.append(head, routeBox, toolbar, grid)
-}
-
-function agentCard(agent) {
-  const card = el('button', 'agent-card', '')
-  card.type = 'button'
-  card.addEventListener('click', () => {
-    location.hash = `#/agents/${agent.id}`
-  })
-
-  const identity = el('div', 'agent-card-identity')
-  identity.append(
-    agentCharacter(agent.id, { size: 'md', mood: characterMood(agent) }),
-    (() => {
-      const text = document.createElement('div')
-      text.append(el('h2', '', agent.name), el('p', 'role', agent.role))
-      return text
-    })(),
-  )
-
-  const top = el('div', 'agent-card-top')
-  top.append(identity, statusBadge(agent.status))
-  card.append(top)
-
-  const skills = el('div', 'meta-row')
-  agent.skills.slice(0, 3).forEach((skill) => skills.append(el('span', 'chip', skill)))
-  card.append(skills)
-
-  card.append(el('p', 'activity-line', agent.currentActivity))
-
-  const meter = el('div', 'health-meter')
-  const bar = el('div', `health-bar ${healthClass(agent.healthScore)}`, '')
-  const fill = document.createElement('span')
-  fill.style.width = `${agent.healthScore}%`
-  bar.append(fill)
-  meter.append(bar, el('span', 'health-score', `${agent.healthScore}%`))
-  card.append(meter)
-
-  const actions = el('div', 'card-actions')
-  const view = el('span', 'btn btn-ghost', 'View')
-  actions.append(view)
-  card.append(actions)
-  return card
-}
-
-function renderAgentProfile(agentId) {
-  const agent = getAgent(agentId)
-  if (!agent) {
-    location.hash = '#/agents'
-    return
-  }
-
-  crumb.textContent = `Agents / ${agent.name}`
-  content.replaceChildren()
-
-  const profile = el('div', 'profile')
-  const hero = el('div', 'profile-hero')
-  const left = el('div', 'profile-hero-main')
-  left.append(
-    agentCharacter(agent.id, { size: 'lg', mood: characterMood(agent) }),
-    (() => {
-      const copy = document.createElement('div')
-      copy.append(el('h1', '', agent.name), el('p', 'role', agent.role))
-      const badges = el('div', 'meta-row')
-      badges.append(statusBadge(agent.status))
-      if (agent.usesRealVisit) {
-        badges.append(el('span', 'tag-real', 'Hospital: real visit API'))
-      }
-      copy.append(badges)
-      return copy
-    })(),
-  )
-  hero.append(left)
-
-  const actions = el('div', 'actions')
-  const back = el('button', 'btn', '← Agents')
-  back.type = 'button'
-  back.addEventListener('click', () => {
-    location.hash = '#/agents'
-  })
-  actions.append(back)
-
-  if (agent.hospitalEligible && agent.status !== 'cleared') {
-    const send = el('button', 'btn btn-primary', 'Open incident')
-    send.type = 'button'
-    send.addEventListener('click', () => openIncident(agent))
-    actions.append(send)
-  } else if (agent.status === 'cleared') {
-    const again = el('button', 'btn', 'Open incident record')
-    again.type = 'button'
-    again.addEventListener('click', () => {
-      location.hash = `#/incidents/${agent.id}`
-    })
-    actions.append(again)
-  }
-  hero.append(actions)
-  profile.append(hero)
-
-  const skillsSection = el('section', 'section')
-  skillsSection.append(el('h2', '', 'Skills'))
-  const skills = el('div', 'meta-row')
-  agent.skills.forEach((s) => skills.append(el('span', 'chip', s)))
-  skillsSection.append(skills)
-  profile.append(skillsSection)
-
-  const activitySection = el('section', 'section')
-  activitySection.append(
-    el('h2', '', 'Current activity'),
-    el('p', '', agent.currentActivity),
-  )
-  const meter = el('div', 'health-meter')
-  const bar = el('div', `health-bar ${healthClass(agent.healthScore)}`, '')
-  const fill = document.createElement('span')
-  fill.style.width = `${agent.healthScore}%`
-  bar.append(fill)
-  meter.append(bar, el('span', 'health-score', `Health ${agent.healthScore}%`))
-  activitySection.append(meter)
-  profile.append(activitySection)
-
-  const healthSection = el('section', 'section')
-  healthSection.append(el('h2', '', 'Health by department'))
-  const deptList = el('ul', 'dept-list')
-  for (const dept of agent.healthByDepartment) {
-    const item = el('li', 'dept-item')
-    const top = el('div', 'dept-item-top')
-    top.append(el('span', 'dept-name', dept.name))
-    top.append(
-      el(
-        'span',
-        dept.real ? 'tag-real' : 'tag-mock',
-        dept.real ? 'Real' : 'Mock',
-      ),
+  if (!data.incidents.length) {
+    content.append(
+      emptyState('No incidents yet. Run an agent with the Lucid observer to record file-write events.'),
     )
-    item.append(top, el('p', 'dept-note', `${dept.status} — ${dept.note}`))
-    deptList.append(item)
-  }
-  healthSection.append(deptList)
-  profile.append(healthSection)
-
-  const mem = el('section', 'section')
-  mem.append(el('h2', '', 'Memory'))
-  const grid = el('div', 'section-grid')
-  grid.append(
-    memoryBlock('Learned', agent.memory.learned),
-    memoryBlock('Failures', agent.memory.failures),
-    memoryBlock('Successes', agent.memory.successes),
-  )
-  mem.append(grid)
-  profile.append(mem)
-
-  content.append(profile)
-}
-
-function memoryBlock(title, items) {
-  const box = el('div', 'section')
-  box.append(el('h2', '', title))
-  if (!items.length) {
-    box.append(el('p', 'empty', 'None yet.'))
-    return box
-  }
-  const list = el('ul', 'memory-list')
-  for (const item of items) {
-    const li = el('li', 'memory-item')
-    li.append(el('p', '', item))
-    list.append(li)
-  }
-  box.append(list)
-  return box
-}
-
-async function renderHospitalVisit(agentId) {
-  const agent = getAgent(agentId)
-  if (!agent) {
-    location.hash = '#/incidents'
     return
   }
 
-  if (agent.hospitalEligible && agent.status !== 'cleared' && agent.status !== 'in_hospital') {
-    agent.status = 'in_hospital'
-    agent.currentActivity = 'Admitted to Hospital for diagnostics'
+  const list = el('div', 'incident-list')
+
+  if (open.length) {
+    list.append(el('h2', 'incident-group-title', 'Open incidents'))
+    for (const incident of open) {
+      list.append(renderIncidentCard(incident))
+    }
+  } else {
+    list.append(el('h2', 'incident-group-title', 'Open incidents'))
+    list.append(emptyState('No open incidents.'))
   }
 
-  crumb.textContent = `Incidents / ${agent.name}`
+  if (cleared.length) {
+    list.append(el('h2', 'incident-group-title', 'Recently cleared'))
+    for (const incident of cleared) {
+      list.append(renderIncidentCard(incident))
+    }
+  }
+
+  content.append(list)
+}
+
+function renderHashChain(chain) {
+  const wrap = el('div', 'hash-chain')
+  chain.forEach((step, index) => {
+    if (index > 0) wrap.append(el('span', 'hash-arrow', '→'))
+    const chip = el(
+      'span',
+      `hash-chip${step.role === 'repeated' || step.role === 'first-seen' ? ' is-repeat' : ''}`,
+      step.shortHash,
+    )
+    chip.title = `seq ${step.sequence} · ${step.path} · ${step.role}`
+    wrap.append(chip)
+  })
+  return wrap
+}
+
+function renderRootCause(rootCause) {
+  if (!rootCause) {
+    return emptyState('Root cause not recorded for this run.')
+  }
+  const body = document.createElement('div')
+  body.append(
+    el('p', 'record-copy', rootCause.summary),
+    facts([
+      ['Title', rootCause.title],
+      ...rootCause.instructions.map((item) => [item.label, item.text]),
+    ]),
+  )
+  return body
+}
+
+function renderTreatment(treatment) {
+  if (!treatment) {
+    return emptyState('No treatment prescribed.')
+  }
+  const body = document.createElement('div')
+  body.append(
+    facts([
+      ['Target', treatment.target],
+      ['Recommended change', treatment.recommendedChange],
+      ['Current behavior', treatment.currentBehavior],
+      ['Recommended instruction', treatment.recommendedInstruction],
+      ['Why', treatment.why],
+      ['Review', treatment.requiresReview ? 'Required' : 'Optional'],
+    ]),
+  )
+  const cli = el('pre', 'cli-block')
+  cli.append(
+    el('span', 'prompt', '$ '),
+    el('span', 'cmd', 'npm run lucid -- fix'),
+    document.createTextNode('\n'),
+    el('span', 'prompt', '# prints treatment in terminal — no web auto-patch'),
+  )
+  body.append(cli)
+  return body
+}
+
+async function renderIncidentDetail(incidentId) {
+  crumb.textContent = 'Incidents / …'
+  content.replaceChildren(el('p', 'activity-line', 'Loading incident…'))
+
+  const detail = await fetchJson(`/api/incidents/${encodeURIComponent(incidentId)}`)
   content.replaceChildren()
-  const layout = el('div', 'hospital-layout')
-  content.append(layout)
 
-  const state = ensureHospitalState(agent)
+  const { incident, run, diagnosis, rootCause, treatment, recheck, hashChain, fileStates, evidence } =
+    detail
 
-  const head = el('div', 'page-head hospital-head')
-  const titleRow = el('div', 'hospital-title')
+  crumb.textContent = `Incidents / ${incident.title}`
+
+  const head = el('div', 'page-head incident-head')
+  const titleRow = el('div', 'incident-head-row')
   titleRow.append(
-    agentCharacter(agent.id, { size: 'lg', mood: characterMood(agent) }),
     (() => {
       const copy = document.createElement('div')
       copy.append(
-        el('h1', '', `${agent.name} — Hospital`),
+        el('h1', '', incident.title),
         el(
           'p',
           '',
-          agent.usesRealVisit
-            ? 'Diagnostics use the real Looping detector via /api/visit. Other departments are labeled mock.'
-            : 'This agent uses mock hospital data only — no real detector backend.',
+          `${detail.detector?.department ?? '—'} / ${detail.detector?.disease ?? '—'} · severity ${detail.severity}`,
         ),
       )
       return copy
     })(),
+    statusBadge(incident.status, detail.severity),
   )
   head.append(titleRow)
-  layout.append(head)
 
-  const steps = el('ul', 'steps')
-  const stepOrder = ['tests', 'diagnosis', 'root', 'treatment', 'recheck', 'cleared']
-  const stepLabels = {
-    tests: 'Tests',
-    diagnosis: 'Diagnosis',
-    root: 'Root cause',
-    treatment: 'Treatment',
-    recheck: 'Recheck',
-    cleared: 'Cleared',
-  }
-  const currentIdx = stepOrder.indexOf(state.step)
-  for (const [i, key] of stepOrder.entries()) {
-    const pill = el(
-      'li',
-      `step-pill${i < currentIdx ? ' is-done' : ''}${i === currentIdx ? ' is-current' : ''}`,
-      stepLabels[key],
-    )
-    steps.append(pill)
-  }
-  layout.append(steps)
-
-  if (!agent.usesRealVisit) {
-    layout.append(renderMockHospital(agent, state, layout))
-    return
-  }
-
-  let visit
-  try {
-    visit = await loadVisit(agentId)
-    bootError.hidden = true
-  } catch (error) {
-    console.error(error)
-    bootError.hidden = false
-    layout.append(el('p', 'empty', 'Could not load /api/visit.'))
-    return
-  }
-
-  await renderAuthHospital(agent, state, visit, layout)
-}
-
-function renderMockHospital(agent, state, layout) {
-  const panel = el('section', 'section')
-  panel.append(
-    el('h2', '', 'Mock admission'),
-    el(
-      'p',
-      'panel-sub',
-      `${agent.name} is eligible for Hospital UX, but there is no real detector for this agent yet.`,
-    ),
-    el('p', 'notice', 'Mock only — do not treat as a real diagnosis.'),
-  )
   const back = el('button', 'btn', '← Incidents')
   back.type = 'button'
   back.addEventListener('click', () => {
     location.hash = '#/incidents'
   })
-  const actions = el('div', 'actions')
-  actions.append(back)
-  panel.append(actions)
-  layout.append(panel)
-  return panel
-}
+  head.append(back)
+  content.append(head)
 
-async function renderAuthHospital(agent, state, visit, layout) {
-  const panel = el('section', 'section')
-  layout.append(panel)
+  const layout = el('div', 'incident-detail')
 
-  const paint = async () => {
-    panel.replaceChildren()
-
-    if (state.step === 'tests') {
-      panel.append(
-        el('p', 'panel-title', 'Department tests'),
-        el('p', 'panel-sub', 'Progressive checks. Only Looping is a real shipped detector.'),
-      )
-      const stack = el('div', 'stack')
-      for (const test of state.tests) {
-        const row = el('div', 'test-row')
-        row.append(el('div', 'test-name', test.name))
-        row.append(el('div', 'test-detail', test.detail))
-        const resultClass =
-          test.result === 'abnormal'
-            ? 'is-abnormal'
-            : test.result === 'clear'
-              ? 'is-clear'
-              : test.result === 'stub'
-                ? 'is-stub'
-                : 'is-pending'
-        row.append(el('div', `test-result ${resultClass}`, test.result))
-        stack.append(row)
-      }
-      panel.append(stack)
-
-      const actions = el('div', 'actions')
-      if (!state.testsRunning && state.tests.every((t) => t.result === 'pending')) {
-        const run = el('button', 'btn btn-primary', 'Run diagnostics')
-        run.type = 'button'
-        run.addEventListener('click', () => void runDiagnostics(agent, state, visit, paint))
-        actions.append(run)
-      } else if (!state.testsRunning && state.tests.some((t) => t.result !== 'pending')) {
-        const next = el('button', 'btn btn-primary', 'Continue to diagnosis')
-        next.type = 'button'
-        next.addEventListener('click', () => {
-          state.step = 'diagnosis'
-          paintSteps()
-          void paint()
-        })
-        actions.append(next)
-      }
-      panel.append(actions)
-      return
-    }
-
-    if (state.step === 'diagnosis') {
-      panel.append(
-        el('p', 'panel-title', 'Diagnosis'),
-        el('p', 'panel-sub', 'Symptom + A→B→A evidence from the Looping detector.'),
-      )
-      panel.append(
-        facts([
-          ['Symptom', visit.symptom],
-          ['Department', `${visit.hospital.department} / ${visit.hospital.disease}`],
-          ['Evidence', visit.diagnosis.evidence],
-          ['File', visit.diagnosis.file ?? '—'],
-          [
-            'Loop',
-            visit.diagnosis.firstSeenTurn != null
-              ? `Turn ${visit.diagnosis.firstSeenTurn} → … → turn ${visit.diagnosis.repeatedAtTurn}`
-              : '—',
-          ],
-        ]),
-      )
-      panel.append(renderHashChain(visit.edits))
-      panel.append(renderTurns(visit.edits))
-      const actions = el('div', 'actions')
-      const next = el('button', 'btn btn-primary', 'View root cause')
-      next.type = 'button'
-      next.addEventListener('click', () => {
-        state.step = 'root'
-        paintSteps()
-        void paint()
-      })
-      actions.append(next)
-      panel.append(actions)
-      return
-    }
-
-    if (state.step === 'root') {
-      panel.append(
-        el('p', 'panel-title', 'Root cause'),
-        el(
-          'p',
-          'panel-sub',
-          'From case / backend notes — not inferred by this UI.',
-        ),
-      )
-      panel.append(
-        facts([
-          ['Title', visit.rootCause.title],
-          ['Summary', visit.rootCause.summary],
-          ...visit.rootCause.instructions.map((item) => [item.label, item.text]),
-        ]),
-      )
-      panel.append(el('p', 'notice notice--info', 'Source: visit case data via /api/visit'))
-      const actions = el('div', 'actions')
-      const next = el('button', 'btn btn-primary', 'Open treatment')
-      next.type = 'button'
-      next.addEventListener('click', () => {
-        state.step = 'treatment'
-        paintSteps()
-        void paint()
-      })
-      actions.append(next)
-      panel.append(actions)
-      return
-    }
-
-    if (state.step === 'treatment') {
-      panel.append(
-        el('p', 'panel-title', 'Treatment'),
-        el(
-          'p',
-          'panel-sub',
-          'Prescribed instruction change. Apply via CLI — this UI does not patch your agent.',
-        ),
-      )
-      panel.append(
-        facts([
-          ['Target', visit.treatment.target],
-          ['Recommended change', visit.treatment.recommendedChange],
-          ['Current behavior', visit.treatment.currentBehavior],
-          ['Recommended instruction', visit.treatment.recommendedInstruction],
-          ['Why', visit.treatment.why],
-          ['Auto-apply', visit.treatment.applied ? 'Applied' : 'Blocked — review required'],
-        ]),
-      )
-
-      const cli = el('pre', 'cli-block')
-      cli.append(
-        el('span', 'prompt', '$ '),
-        el('span', 'cmd', 'npm run lucid -- fix'),
-        document.createTextNode('\n'),
-        el('span', 'prompt', '# review required; no web auto-patch'),
-      )
-      panel.append(cli)
-      panel.append(
-        el(
-          'p',
-          'notice',
-          'lucid fix prints the treatment in the terminal. There is no fake web Apply that patches code.',
-        ),
-      )
-
-      const actions = el('div', 'actions')
-      if (!state.treatmentSimulated) {
-        const sim = el('button', 'btn btn-primary', 'Mark treatment applied (simulate)')
-        sim.type = 'button'
-        sim.title = 'Demo only — simulates that you ran lucid fix / applied the instruction change'
-        sim.addEventListener('click', () => {
-          state.treatmentSimulated = true
-          pushActivity(
-            `${agent.name}: treatment marked applied (simulated after lucid fix)`,
-            agent.id,
-          )
-          void paint()
-        })
-        actions.append(sim)
-      } else {
-        panel.append(
-          el('p', 'notice notice--ok', 'Simulated: treatment applied. Ready for recheck.'),
-        )
-        const next = el('button', 'btn btn-primary', 'Run recheck')
-        next.type = 'button'
-        next.addEventListener('click', () => {
-          state.step = 'recheck'
-          paintSteps()
-          void paint()
-        })
-        actions.append(next)
-      }
-      panel.append(actions)
-      return
-    }
-
-    if (state.step === 'recheck') {
-      panel.append(
-        el('p', 'panel-title', 'Recheck'),
-        el('p', 'panel-sub', 'Post-treatment trace from the visit fixture.'),
-      )
-
-      if (!state.recheckDone) {
-        const listHost = el('div', '')
-        panel.append(listHost)
-        listHost.append(el('p', 'activity-line', 'Replaying recheck turns…'))
-        await playRecheck(listHost, visit.recheck)
-        state.recheckDone = true
-      }
-
-      panel.append(renderTurns(visit.recheck))
-      panel.append(
-        facts([
-          ['Verification', visit.verification.passed ? 'Passed' : 'Failed'],
-          ['Evidence', visit.verification.evidence],
-        ]),
-      )
-      if (visit.verification.passed) {
-        panel.append(el('p', 'notice notice--ok', 'Recheck passed. No repeated state detected.'))
-      }
-
-      const actions = el('div', 'actions')
-      const next = el('button', 'btn btn-primary', 'Clear & return')
-      next.type = 'button'
-      next.addEventListener('click', () => {
-        clearAgent(agent, visit)
-        state.step = 'cleared'
-        paintSteps()
-        void paint()
-      })
-      actions.append(next)
-      panel.append(actions)
-      return
-    }
-
-    if (state.step === 'cleared') {
-      panel.append(
-        el('p', 'panel-title', 'Cleared'),
-        el('p', 'panel-sub', `${agent.name} returned to Incidents with restored health.`),
-        el('p', 'notice notice--ok', 'Health restored. New lesson written to agent memory.'),
-      )
-      panel.append(
-        facts([
-          ['Health', `${agent.healthScore}%`],
-          ['Status', agent.status],
-          ['Learned', agent.memory.learned[agent.memory.learned.length - 1] ?? '—'],
-        ]),
-      )
-      const actions = el('div', 'actions')
-      const back = el('button', 'btn btn-primary', 'Back to Incidents')
-      back.type = 'button'
-      back.addEventListener('click', () => {
-        location.hash = '#/incidents'
-      })
-      actions.append(back)
-      panel.append(actions)
-    }
-  }
-
-  const paintSteps = () => {
-    const stepsEl = layout.querySelector('.steps')
-    if (!stepsEl) return
-    const stepOrder = ['tests', 'diagnosis', 'root', 'treatment', 'recheck', 'cleared']
-    const currentIdx = stepOrder.indexOf(state.step)
-    stepsEl.querySelectorAll('.step-pill').forEach((pill, i) => {
-      pill.classList.toggle('is-done', i < currentIdx)
-      pill.classList.toggle('is-current', i === currentIdx)
-    })
-  }
-
-  await paint()
-}
-
-async function runDiagnostics(agent, state, visit, paint) {
-  state.testsRunning = true
-  await paint()
-
-  for (const test of state.tests) {
-    await wait(380)
-    if (test.id === 'looping') {
-      test.result = visit.diagnosis.status === 'critical' ? 'abnormal' : 'clear'
-      test.detail = visit.diagnosis.evidence
-    } else {
-      test.result = 'stub'
-      test.detail = 'Mock — department not shipped (no real detector)'
-    }
-    await paint()
-  }
-
-  state.testsRunning = false
-  pushActivity(`${agent.name}: department tests complete (looping real, others mock)`, agent.id)
-  await paint()
-}
-
-async function playRecheck(host, edits) {
-  host.replaceChildren()
-  const list = el('ol', 'turns')
-  host.append(list)
-  for (const edit of edits) {
-    const item = el('li', 'turn')
-    const top = el('div', 'turn-top')
-    top.append(el('span', '', `Turn ${edit.turn}`), el('code', '', edit.file))
-    item.append(top, el('p', 'intent', edit.intent), el('code', 'hash', edit.shortHash))
-    list.append(item)
-    await wait(420)
-  }
-}
-
-function clearAgent(agent, visit) {
-  agent.status = 'cleared'
-  agent.healthScore = 96
-  agent.currentActivity = 'Back on auth.py with resolved instruction priority'
-  agent.healthByDepartment = agent.healthByDepartment.map((d) =>
-    d.id === 'looping'
-      ? {
-          ...d,
-          status: 'ok',
-          note: 'repeated-file-state clear after recheck (real)',
-          real: true,
-        }
-      : d,
-  )
-  const lesson = `When instructions conflict (${visit.rootCause.title}), report the conflict instead of oscillating file state.`
-  if (!agent.memory.learned.includes(lesson)) {
-    agent.memory.learned = [lesson, ...agent.memory.learned]
-  }
-  agent.memory.successes = [
-    'Passed Hospital recheck — no A→B→A on auth.py',
-    ...agent.memory.successes,
-  ]
-  pushActivity(`${agent.name} cleared from Hospital — health restored`, agent.id)
-}
-
-function renderActivity() {
-  crumb.textContent = 'Activity'
-  content.replaceChildren()
-
-  const head = el('div', 'page-head')
-  head.append(el('h1', '', 'Activity'), el('p', '', 'Chronological local feed.'))
-
-  const feed = el('ul', 'feed')
-  for (const item of activity) {
-    const li = el('li', 'feed-item')
-    const top = el('div', 'feed-top')
-    const title = el('span', 'feed-title list-agent')
-    const agent = item.agentId ? getAgent(item.agentId) : null
-    if (agent) {
-      title.append(
-        agentCharacter(agent.id, { size: 'sm', mood: characterMood(agent) }),
-        document.createTextNode(agent.name),
-      )
-    } else {
-      title.textContent = item.kind
-    }
-    top.append(title, el('span', 'feed-time', formatTime(item.at)))
-    li.append(top, el('p', 'feed-text', item.text))
-    feed.append(li)
-  }
-  content.append(head, feed)
-}
-
-function renderMemory() {
-  crumb.textContent = 'Memory'
-  content.replaceChildren()
-
-  const head = el('div', 'page-head')
-  head.append(
-    el('h1', '', 'Memory'),
-    el('p', '', 'Searchable lessons across agents.'),
+  layout.append(
+    section(
+      'Status',
+      facts([
+        ['Incident', incident.id],
+        ['Status', incident.status],
+        ['Severity', detail.severity],
+        ['Opened', formatTime(incident.createdAt)],
+        ['Updated', formatTime(incident.updatedAt)],
+      ]),
+    ),
   )
 
-  const toolbar = el('div', 'toolbar')
-  const search = document.createElement('input')
-  search.type = 'search'
-  search.placeholder = 'Search learned / failures / successes…'
-  search.setAttribute('aria-label', 'Search memory')
-  toolbar.append(search)
+  layout.append(
+    section(
+      'Run / task',
+      run
+        ? facts([
+            ['Run', run.id],
+            ['Agent', run.agentId ?? '—'],
+            ['Run status', run.status],
+            ['Started', formatTime(run.startedAt)],
+            ['Events', String(run.events.length)],
+          ])
+        : emptyState('No linked run.'),
+    ),
+  )
 
-  const list = el('ul', 'memory-list')
+  layout.append(
+    section(
+      'Affected file',
+      fileStates
+        ? facts([
+            ['File', fileStates.file],
+            ['Repeated hash', fileStates.hash.slice(0, 12) + '…'],
+            ['First seen', `seq ${fileStates.firstSeen.sequence}`],
+            ['Repeated at', `seq ${fileStates.repeated.sequence}`],
+          ])
+        : emptyState('No file-state loop identified.'),
+    ),
+  )
 
-  const paint = () => {
-    const q = search.value.trim().toLowerCase()
-    list.replaceChildren()
-    const rows = []
-    for (const agent of agents) {
-      for (const kind of ['learned', 'failures', 'successes']) {
-        for (const text of agent.memory[kind]) {
-          if (q && !text.toLowerCase().includes(q) && !agent.name.toLowerCase().includes(q)) {
-            continue
-          }
-          rows.push({ agent, kind, text })
-        }
-      }
-    }
-    if (!rows.length) {
-      const empty = el('li', 'memory-item')
-      empty.append(el('p', 'empty', 'No memories match.'))
-      list.append(empty)
-      return
-    }
-    for (const row of rows) {
-      const li = el('li', 'memory-item')
-      const top = el('div', 'dept-item-top')
-      const nameRow = el('div', 'list-agent')
-      const link = el('a', 'dept-name', row.agent.name)
-      link.href = `#/agents/${row.agent.id}`
-      nameRow.append(
-        agentCharacter(row.agent.id, { size: 'sm', mood: characterMood(row.agent) }),
-        link,
-      )
-      top.append(nameRow, el('span', 'chip', row.kind))
-      li.append(top, el('p', '', row.text))
-      list.append(li)
-    }
-  }
+  layout.append(section('What happened', incident.title))
 
-  search.addEventListener('input', paint)
-  paint()
-  content.append(head, toolbar, list)
+  layout.append(
+    section(
+      'Deterministic evidence',
+      evidence ? el('p', 'record-copy mono', evidence) : emptyState('No evidence recorded.'),
+    ),
+  )
+
+  layout.append(
+    section(
+      'A → B → A visualization',
+      hashChain?.length
+        ? (() => {
+            const body = document.createElement('div')
+            body.append(renderHashChain(hashChain))
+            const legend = el('ul', 'chain-legend')
+            for (const step of hashChain) {
+              const item = el('li', '')
+              item.append(
+                el('code', '', step.shortHash),
+                document.createTextNode(
+                  ` seq ${step.sequence} · ${step.role}${step.role === 'repeated' ? ' (matches first)' : ''}`,
+                ),
+              )
+              legend.append(item)
+            }
+            body.append(legend)
+            return body
+          })()
+        : emptyState('Hash chain not available.'),
+    ),
+  )
+
+  layout.append(
+    section(
+      'Diagnosis',
+      diagnosis
+        ? facts([
+            ['Department', diagnosis.department],
+            ['Disease', diagnosis.disease],
+            ['Status', diagnosis.status],
+            ['Symptom', diagnosis.symptom],
+            ['Evidence', diagnosis.evidence],
+          ])
+        : emptyState('Diagnosis unavailable.'),
+    ),
+  )
+
+  layout.append(section('Root cause', renderRootCause(rootCause)))
+  layout.append(section('Treatment', renderTreatment(treatment)))
+
+  layout.append(
+    section(
+      'Recheck',
+      facts([
+        ['Available', recheck.available ? 'Yes' : 'No'],
+        ['Passed', recheck.passed == null ? '—' : recheck.passed ? 'Yes' : 'No'],
+        ['Evidence', recheck.evidence],
+      ]),
+    ),
+  )
+
+  content.append(layout)
 }
 
 async function render() {
@@ -1066,17 +373,18 @@ async function render() {
   setActiveNav(route)
 
   try {
-    if (route.page === 'incidents') await renderIncidentsPage()
-    else if (route.page === 'incident') await renderHospitalVisit(route.agentId)
-    else if (route.page === 'agents') renderAgentsPage()
-    else if (route.page === 'agent') renderAgentProfile(route.agentId)
-    else if (route.page === 'activity') renderActivity()
-    else if (route.page === 'memory') renderMemory()
-    else await renderIncidentsPage()
+    if (route.page === 'incident') {
+      await renderIncidentDetail(route.incidentId)
+    } else {
+      await renderIncidentsPage()
+    }
     bootError.hidden = true
   } catch (error) {
     console.error(error)
     bootError.hidden = false
+    content.replaceChildren(
+      emptyState('Could not load from /api/incidents. Is npm run web running?'),
+    )
   }
 }
 

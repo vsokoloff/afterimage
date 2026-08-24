@@ -144,6 +144,23 @@ test('GET /api/incidents/:id returns enriched incident detail', async () => {
     assert.equal(body.fileStates.repeated.eventId, 'w-a2')
     assert.equal(body.fileStates.firstSeen.content, 'state-A')
     assert.equal(body.fileStates.repeated.content, 'state-A')
+
+    assert.ok(Array.isArray(body.hashChain))
+    assert.equal(body.hashChain.length, 3)
+    assert.equal(body.hashChain[0]?.role, 'first-seen')
+    assert.equal(body.hashChain[2]?.role, 'repeated')
+
+    assert.ok(body.diagnosis)
+    assert.equal(body.diagnosis.status, 'critical')
+    assert.match(body.diagnosis.evidence, /^repeated-file-state/)
+
+    assert.ok(body.treatment)
+    assert.equal(body.treatment.requiresReview, true)
+
+    assert.equal(body.rootCause, null)
+
+    assert.ok(body.recheck)
+    assert.equal(typeof body.recheck.available, 'boolean')
   })
 })
 
