@@ -1,0 +1,229 @@
+:root {
+  --chassis: #1b1612;
+  --plate: #261f19;
+  --ink: #efe6d6;
+  --mute: #b3a18a;
+  --amber: #f0b45a;
+  --teal: #6ec8b8;
+  --fault: #e25a3c;
+  --ok: #7dce9a;
+  --rule: #3b3228;
+  --display: "Syne", "Avenir Next", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { background: #100d0b; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 80% -10%, #3a2a18, transparent 34%),
+    #100d0b;
+  font-family: var(--display);
+}
+
+button, code { font: inherit; }
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+.chassis {
+  width: min(860px, calc(100% - 24px));
+  min-height: calc(100vh - 24px);
+  margin: 12px auto;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #221b16, var(--chassis));
+  border: 1px solid #4a3c2e;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 45%);
+}
+
+.bezel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.logo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.pip {
+  width: 9px;
+  height: 9px;
+  background: var(--amber);
+  box-shadow: 0 0 12px var(--amber);
+}
+
+#status,
+.kicker,
+.turn-top,
+.seen,
+.feedback span,
+.flag,
+dt {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+#status { margin: 0; color: var(--amber); }
+.stage { padding: 28px 22px 36px; }
+
+.plate,
+.scope {
+  max-width: 680px;
+}
+
+.plate {
+  padding: 24px;
+  background: var(--plate);
+  border: 1px solid var(--rule);
+}
+
+h1, h2 {
+  margin: 0 0 8px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+h1 { font-size: clamp(2.6rem, 8vw, 4.2rem); line-height: 0.9; }
+h2 { font-size: 1.7rem; }
+.role, .note, .headline + p { color: var(--mute); line-height: 1.5; }
+.role { margin: 0 0 22px; }
+.kicker { margin: 0 0 8px; }
+.headline { margin: 0 0 8px; color: var(--amber); font-size: 1.2rem; }
+
+.facts { display: grid; gap: 14px; margin: 18px 0 0; }
+dt { margin: 0 0 4px; }
+dd { margin: 0; line-height: 1.5; }
+
+.action {
+  min-height: 48px;
+  margin-top: 22px;
+  padding: 0 16px;
+  color: #1b1612;
+  background: var(--amber);
+  border: 0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.action:hover { filter: brightness(1.08); }
+
+.scope {
+  padding: 8px 0 4px;
+}
+
+.turns { margin: 0; padding: 0; list-style: none; }
+
+.turn,
+.feedback {
+  padding: 16px 18px;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  background: #0d0b09;
+  border-left: 3px solid var(--teal);
+}
+
+.turn.is-repeat { border-left-color: var(--amber); }
+.turn-top { display: flex; justify-content: space-between; }
+.intent { margin: 0; }
+
+.hash {
+  font-family: var(--mono);
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.turn.is-repeat .hash,
+.chip-repeat,
+.seen {
+  color: var(--amber);
+}
+
+.seen { margin: 0; }
+
+.feedback {
+  margin-left: 18px;
+  border-left: 1px dashed #6a5744;
+}
+
+.feedback::before {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--mute);
+  content: "↓";
+}
+
+.feedback p {
+  margin: 6px 0 0;
+  font-size: 1.05rem;
+}
+
+.chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin: 22px 0 8px;
+  padding: 26px 12px;
+  background: #0a0806;
+  font-family: var(--mono);
+  font-size: clamp(1.7rem, 5vw, 2.9rem);
+  font-weight: 600;
+  box-shadow: inset 0 0 40px rgb(240 180 90 / 8%);
+}
+
+.arrow { color: #6a5744; }
+.chip-mid { color: var(--teal); }
+.chip-repeat {
+  border-bottom: 3px solid var(--amber);
+  text-shadow: 0 0 18px rgb(240 180 90 / 45%);
+}
+
+.plate { margin-top: 24px; }
+
+.flag {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 4px 7px;
+  color: var(--fault);
+  border: 1px solid var(--fault);
+}
+
+.flag--clear {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.error { margin: 0; padding: 0 22px 22px; color: var(--fault); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}
