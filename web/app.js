@@ -4,6 +4,12 @@ import {
   hospitalDepartments,
   suggestAgents,
 } from './data/agents.js'
+import { agentCharacter, moodForStatus } from './characters.js'
+
+/** Auth alone gets a worried face while unhealthy; others stay cheerful. */
+function characterMood(agent) {
+  return agent.id === 'auth' ? moodForStatus(agent.status) : 'cheerful'
+}
 
 const content = document.querySelector('#content')
 const crumb = document.querySelector('#crumb')
@@ -220,7 +226,11 @@ function renderAgentsPage() {
       const li = el('li', '')
       const link = el('a', 'suggestion', '')
       link.href = `#/agents/${agent.id}`
-      link.append(el('strong', '', agent.name), document.createTextNode(agent.role))
+      link.append(
+        agentCharacter(agent.id, { size: 'sm', mood: characterMood(agent) }),
+        el('strong', '', agent.name),
+        document.createTextNode(agent.role),
+      )
       li.append(link)
       suggestions.append(li)
     }
@@ -270,9 +280,19 @@ function agentCard(agent) {
     location.hash = `#/agents/${agent.id}`
   })
 
+  const identity = el('div', 'agent-card-identity')
+  identity.append(
+    agentCharacter(agent.id, { size: 'md', mood: characterMood(agent) }),
+    (() => {
+      const text = document.createElement('div')
+      text.append(el('h2', '', agent.name), el('p', 'role', agent.role))
+      return text
+    })(),
+  )
+
   const top = el('div', 'agent-card-top')
-  top.append(el('h2', '', agent.name), statusBadge(agent.status))
-  card.append(top, el('p', 'role', agent.role))
+  top.append(identity, statusBadge(agent.status))
+  card.append(top)
 
   const skills = el('div', 'meta-row')
   agent.skills.slice(0, 3).forEach((skill) => skills.append(el('span', 'chip', skill)))
@@ -307,14 +327,21 @@ function renderAgentProfile(agentId) {
 
   const profile = el('div', 'profile')
   const hero = el('div', 'profile-hero')
-  const left = document.createElement('div')
-  left.append(el('h1', '', agent.name), el('p', 'role', agent.role))
-  const badges = el('div', 'meta-row')
-  badges.append(statusBadge(agent.status))
-  if (agent.usesRealVisit) {
-    badges.append(el('span', 'tag-real', 'Hospital: real visit API'))
-  }
-  left.append(badges)
+  const left = el('div', 'profile-hero-main')
+  left.append(
+    agentCharacter(agent.id, { size: 'lg', mood: characterMood(agent) }),
+    (() => {
+      const copy = document.createElement('div')
+      copy.append(el('h1', '', agent.name), el('p', 'role', agent.role))
+      const badges = el('div', 'meta-row')
+      badges.append(statusBadge(agent.status))
+      if (agent.usesRealVisit) {
+        badges.append(el('span', 'tag-real', 'Hospital: real visit API'))
+      }
+      copy.append(badges)
+      return copy
+    })(),
+  )
   hero.append(left)
 
   const actions = el('div', 'actions')
@@ -432,17 +459,26 @@ async function renderHospitalVisit(agentId) {
 
   const state = ensureHospitalState(agent)
 
-  const head = el('div', 'page-head')
-  head.append(
-    el('h1', '', `${agent.name} — Hospital`),
-    el(
-      'p',
-      '',
-      agent.usesRealVisit
-        ? 'Diagnostics use the real Looping detector via /api/visit. Other departments are labeled mock.'
-        : 'This agent uses mock hospital data only — no real detector backend.',
-    ),
+  const head = el('div', 'page-head hospital-head')
+  const titleRow = el('div', 'hospital-title')
+  titleRow.append(
+    agentCharacter(agent.id, { size: 'lg', mood: characterMood(agent) }),
+    (() => {
+      const copy = document.createElement('div')
+      copy.append(
+        el('h1', '', `${agent.name} — Hospital`),
+        el(
+          'p',
+          '',
+          agent.usesRealVisit
+            ? 'Diagnostics use the real Looping detector via /api/visit. Other departments are labeled mock.'
+            : 'This agent uses mock hospital data only — no real detector backend.',
+        ),
+      )
+      return copy
+    })(),
   )
+  head.append(titleRow)
   layout.append(head)
 
   const steps = el('ul', 'steps')
@@ -860,12 +896,19 @@ function overviewColumn(title, list, emptyText) {
   for (const agent of list) {
     const li = el('li', 'dept-item')
     const top = el('div', 'dept-item-top')
-    const link = el('a', 'dept-name', agent.name)
-    link.href =
-      agent.status === 'in_hospital' || agent.status === 'cleared'
-        ? `#/agents/${agent.id}/hospital`
-        : `#/agents/${agent.id}`
-    top.append(link, statusBadge(agent.status))
+    const nameRow = el('div', 'list-agent')
+    nameRow.append(
+      agentCharacter(agent.id, { size: 'sm', mood: characterMood(agent) }),
+      (() => {
+        const link = el('a', 'dept-name', agent.name)
+        link.href =
+          agent.status === 'in_hospital' || agent.status === 'cleared'
+            ? `#/agents/${agent.id}/hospital`
+            : `#/agents/${agent.id}`
+        return link
+      })(),
+    )
+    top.append(nameRow, statusBadge(agent.status))
     li.append(top, el('p', 'dept-note', agent.currentActivity))
     items.append(li)
   }
@@ -884,10 +927,17 @@ function renderActivity() {
   for (const item of activity) {
     const li = el('li', 'feed-item')
     const top = el('div', 'feed-top')
-    top.append(
-      el('span', 'feed-title', item.agentId ? getAgent(item.agentId)?.name ?? item.kind : item.kind),
-      el('span', 'feed-time', formatTime(item.at)),
-    )
+    const title = el('span', 'feed-title list-agent')
+    const agent = item.agentId ? getAgent(item.agentId) : null
+    if (agent) {
+      title.append(
+        agentCharacter(agent.id, { size: 'sm', mood: characterMood(agent) }),
+        document.createTextNode(agent.name),
+      )
+    } else {
+      title.textContent = item.kind
+    }
+    top.append(title, el('span', 'feed-time', formatTime(item.at)))
     li.append(top, el('p', 'feed-text', item.text))
     feed.append(li)
   }
@@ -936,9 +986,14 @@ function renderMemory() {
     for (const row of rows) {
       const li = el('li', 'memory-item')
       const top = el('div', 'dept-item-top')
+      const nameRow = el('div', 'list-agent')
       const link = el('a', 'dept-name', row.agent.name)
       link.href = `#/agents/${row.agent.id}`
-      top.append(link, el('span', 'chip', row.kind))
+      nameRow.append(
+        agentCharacter(row.agent.id, { size: 'sm', mood: characterMood(row.agent) }),
+        link,
+      )
+      top.append(nameRow, el('span', 'chip', row.kind))
       li.append(top, el('p', '', row.text))
       list.append(li)
     }

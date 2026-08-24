@@ -10,6 +10,13 @@ const staticFiles = new Map([
   ['/styles.css', { file: resolve(process.cwd(), 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/app.js', { file: resolve(process.cwd(), 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
   [
+    '/characters.js',
+    {
+      file: resolve(process.cwd(), 'web/characters.js'),
+      type: 'text/javascript; charset=utf-8',
+    },
+  ],
+  [
     '/data/agents.js',
     {
       file: resolve(process.cwd(), 'web/data/agents.js'),

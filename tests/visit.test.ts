@@ -35,6 +35,12 @@ test('serves the command center and visit API', async () => {
     assert.equal(agentsAsset.status, 200)
     assert.match(await agentsAsset.text(), /Auth Agent/)
 
+    const charactersAsset = await fetch(`${url}/characters.js`)
+    assert.equal(charactersAsset.status, 200)
+    const charactersSource = await charactersAsset.text()
+    assert.match(charactersSource, /agentCharacter/)
+    assert.match(charactersSource, /Auth — shield|shield \+ key/)
+
     const api = await fetch(`${url}/api/visit`)
     const body = await api.json()
     assert.equal(api.status, 200)

@@ -318,6 +318,13 @@ input:focus-visible {
   gap: 8px;
 }
 
+.agent-card-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
 .agent-card h2 {
   margin: 0;
   font-size: 15px;
@@ -326,9 +333,62 @@ input:focus-visible {
 }
 
 .agent-card .role {
-  margin: 0;
+  margin: 4px 0 0;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.agent-mascot {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.agent-mascot svg {
+  display: block;
+}
+
+.agent-mascot--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.agent-mascot--md {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.agent-mascot--lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+.list-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-hero-main,
+.hospital-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.hospital-head .hospital-title h1 {
+  margin: 0 0 6px;
+}
+
+.hospital-head .hospital-title p {
+  margin: 0;
 }
 
 .badge {
@@ -477,10 +537,16 @@ input:focus-visible {
   align-items: flex-start;
 }
 
-.profile-hero h1 {
+.profile-hero h1,
+.hospital-title h1 {
   margin: 0 0 6px;
   font-size: 24px;
   letter-spacing: -0.03em;
+}
+
+.profile-hero .role {
+  margin: 0 0 8px;
+  color: var(--text-muted);
 }
 
 .section {
