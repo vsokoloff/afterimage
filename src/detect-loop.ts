@@ -4,6 +4,7 @@
  */
 export {
   detectLoop,
+  detectLoopFromFileWrites,
   hashContent,
   shortHash,
 } from './departments/looping/repeated-file-state/detect.ts'

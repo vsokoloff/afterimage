@@ -4,6 +4,7 @@ import { repeatedFileState } from './repeated-file-state/index.ts'
 export { repeatedFileState } from './repeated-file-state/index.ts'
 export {
   detectLoop,
+  detectLoopFromFileWrites,
   detectRepeatedFileState,
   hashContent,
   shortHash,

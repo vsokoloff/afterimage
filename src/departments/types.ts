@@ -1,8 +1,32 @@
+import type { AgentEvent, AgentRun } from '../events.ts'
+import { editsFromAgentEvents, editsFromAgentRun } from '../events.ts'
 import type { FileEdit, LoopSignal, RootCause, Treatment } from '../types.ts'
 
-/** Minimal agent observation: complete file contents after successful writes. */
+/**
+ * Detector-facing observation of an agent.
+ *
+ * Prefer `edits` for fixtures and unit tests.
+ * Prefer `run` / `events` when wiring a real AgentRun — looping uses file_write events.
+ * At least one of `edits`, `events`, or `run` must be present.
+ */
 export type AgentTrace = {
-  edits: FileEdit[]
+  edits?: FileEdit[]
+  events?: AgentEvent[]
+  run?: AgentRun
+}
+
+/** Normalize any AgentTrace into legacy FileEdit rows for shipped detectors. */
+export function resolveTraceEdits(trace: AgentTrace): FileEdit[] {
+  if (trace.edits && trace.edits.length > 0) {
+    return trace.edits
+  }
+  if (trace.run) {
+    return editsFromAgentRun(trace.run)
+  }
+  if (trace.events && trace.events.length > 0) {
+    return editsFromAgentEvents(trace.events)
+  }
+  return trace.edits ?? []
 }
 
 /**

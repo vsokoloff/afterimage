@@ -186,9 +186,11 @@ export function getPrimaryDisease(): DiseasePlugin {
 }
 
 export type { Abnormality, AgentTrace, DepartmentInfo, DiagnosisResult, DiseasePlugin, IncidentContext, TreatmentPlan, VerificationResult } from './types.ts'
+export { resolveTraceEdits } from './types.ts'
 export { repeatedFileState } from './looping/index.ts'
 export {
   detectLoop,
+  detectLoopFromFileWrites,
   detectRepeatedFileState,
   hashContent,
   shortHash,
