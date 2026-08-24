@@ -44,6 +44,8 @@ function svgMarkup(agentId, mood) {
     frontend: frontendSvg,
     data: dataSvg,
     ops: opsSvg,
+    kitty: kittySvg,
+    gitty: kittySvg,
   }
   const build = builders[agentId] ?? fallbackSvg
   return build(mood)
@@ -230,6 +232,30 @@ function opsSvg(mood) {
       <path d="M48 62v5l3 2"/>
       <path d="M28 22c2-1 4 0 5 2M52 22c-2-1-4 0-5 2" stroke="#ffd54f"/>
     </g>
+  `,
+  )
+}
+
+/** Kitty — soft peach cat for Gitty / PR helper. */
+function kittySvg(mood) {
+  return frame(
+    '#ffe8d6',
+    `
+    <ellipse cx="40" cy="46" rx="20" ry="16" fill="#f4b183"/>
+    <circle cx="40" cy="34" r="16" fill="#f7c59f"/>
+    <path d="M24 28l-2-12 12 8z" fill="#f4b183"/>
+    <path d="M56 28l2-12-12 8z" fill="#f4b183"/>
+    <path d="M26 26l2-8 8 6z" fill="#f9d5b5"/>
+    <path d="M54 26l-2-8-8 6z" fill="#f9d5b5"/>
+    ${face(mood, { cy: 34, eyeY: 32, mouthY: 44 })}
+    <ellipse cx="40" cy="40" rx="2.5" ry="1.6" fill="#f48fb1"/>
+    <g fill="none" stroke="#2a2d36" stroke-width="1.6" stroke-linecap="round">
+      <path d="M18 38h8M18 42h7"/>
+      <path d="M54 38h8M55 42h7"/>
+      <path d="M58 50c6 2 10 8 8 14"/>
+    </g>
+    <circle cx="52" cy="18" r="3" fill="#7eb6e8"/>
+    <path d="M52 15v-4M50 14l-3-2M54 14l3-2" stroke="#7eb6e8" stroke-width="1.4" stroke-linecap="round"/>
   `,
   )
 }

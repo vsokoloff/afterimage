@@ -1,0 +1,23 @@
+---
+description: When the user says gitty push (or asks Gitty to push), commit, explain, push, and take care of PRs.
+alwaysApply: true
+---
+
+# Gitty push
+
+Gitty is the kitty agent for all git / PR work in this repo.
+
+Whenever the user says **gitty push**, **gitty should push**, or asks Gitty to commit/push/take care of PRs:
+
+1. Prefer running the Lucid command from the repo root:
+   `npm run lucid -- gitty push`
+   (optional: `--message "..."` for an explicit commit message)
+2. That command **always** means the full habit:
+   - stage safe files (never `.env` / credential secrets)
+   - **commit** pending changes with a clear “why” message
+   - **explain** what was committed
+   - **push** to the remote
+   - **take care of PRs** (`gh pr` create or show existing URL; skip on `main`/`master`)
+3. If the CLI is unavailable mid-session, do the same flow manually with git/`gh`, still explaining the commit.
+4. Do not ask whether to commit when the user invoked Gitty push — they already asked for the full habit.
+5. After push, follow the user’s Vercel production rule if this project deploys there.

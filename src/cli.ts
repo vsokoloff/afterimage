@@ -21,6 +21,7 @@ import { initWorkspaceStore } from './workspace/store.ts'
 import { startServer } from './server.ts'
 import { parseFixArgv, runFixCommand } from './treatment/index.ts'
 import { parseRecheckArgv, runRecheckCommand } from './recheck/index.ts'
+import { parseGittyArgv, runGittyPush } from './gitty/index.ts'
 
 const USAGE = `Lucid hospital (local)
 
@@ -39,6 +40,7 @@ Commands:
   fix <incident-id>  Review and optionally apply treatment for a real incident
   recheck <incident-id>
                    Run reproduction + disease verify; clear only on pass
+  gitty push       Commit, explain, push, and take care of PRs (Gitty)
   departments      List departments and disease status
 
 Run options:
@@ -54,9 +56,12 @@ Run options:
   npm run lucid -- fix inc_abc123 --apply --yes
   npm run lucid -- fix inc_abc123 --rollback --yes
   npm run lucid -- recheck inc_abc123
+  npm run lucid -- gitty push
+  npm run lucid -- gitty push --message "why this change"
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
+Gitty remembers: "gitty push" always means commit + explain + push + PR care.
 `
 
 function contextFromCase() {
@@ -231,6 +236,43 @@ async function cmdRecheck(): Promise<number> {
   }
 }
 
+async function cmdGitty(): Promise<number> {
+  const parsed = parseGittyArgv(process.argv)
+  if (!parsed) {
+    console.error('Usage: npm run lucid -- gitty push [--message <msg>] [--dry-run]')
+    return 1
+  }
+  if (parsed.action === 'help') {
+    console.log('Gitty — your kitty for git + PRs')
+    console.log()
+    console.log('  npm run lucid -- gitty push')
+    console.log('  npm run lucid -- gitty push --message "why this change"')
+    console.log('  npm run lucid -- gitty push --dry-run')
+    console.log()
+    console.log('Remembered habit: push = commit + explain + push + take care of PRs.')
+    return 0
+  }
+
+  const store = await openStore({ cwd: process.cwd() })
+  const result = await runGittyPush({
+    store,
+    cwd: process.cwd(),
+    message: parsed.message,
+    dryRun: parsed.dryRun,
+  })
+
+  console.log('Gitty')
+  console.log(result.explanation)
+  if (result.skippedSecrets.length > 0) {
+    console.log(`Skipped secrets: ${result.skippedSecrets.join(', ')}`)
+  }
+  if (result.commitSha) console.log(`Commit: ${result.commitSha.slice(0, 7)}`)
+  if (result.prUrl) console.log(`PR: ${result.prUrl}`)
+  console.log()
+  console.log(`Remembered: ${result.habits.push.note}`)
+  return result.exitCode
+}
+
 function cmdDepartments(): void {
   console.log('Departments')
   for (const dept of listDepartments()) {
@@ -287,6 +329,9 @@ async function main(): Promise<void> {
       break
     case 'recheck':
       process.exitCode = await cmdRecheck()
+      break
+    case 'gitty':
+      process.exitCode = await cmdGitty()
       break
     case 'departments':
       cmdDepartments()

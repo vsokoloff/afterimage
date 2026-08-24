@@ -48,24 +48,37 @@ export function resolveAgentCatalog(
     }
   }
 
-  if (agentId === 'subprocess') {
+  if (agentId === 'gitty' || agentId === 'subprocess') {
     return {
-      name: configured?.name ?? 'Subprocess',
-      characterId: configured?.characterId ?? null,
-      role: configured?.role ?? 'Commands observed via lucid run',
+      name: configured?.name ?? (agentId === 'gitty' ? 'Gitty' : 'Subprocess'),
+      characterId: configured?.characterId ?? (agentId === 'gitty' ? 'kitty' : null),
+      role:
+        configured?.role ??
+        (agentId === 'gitty'
+          ? 'Takes care of all your git work and PRs'
+          : 'Commands observed via lucid run'),
+    }
+  }
+
+  // Repo config may set character/role without a custom name.
+  if (configured) {
+    return {
+      name: configured.name ?? formatAgentLabel(agentId),
+      characterId: configured.characterId ?? null,
+      role: configured.role ?? null,
     }
   }
 
   return {
     name: formatAgentLabel(agentId),
-    characterId: configured?.characterId ?? null,
-    role: configured?.role ?? null,
+    characterId: null,
+    role: null,
   }
 }
 
 export function resolveAgentRuntime(agentId: string, runEvents?: { type: string }[]): string {
   if (agentId.startsWith('codex:') || agentId.startsWith('recheck:')) return 'Codex'
-  if (agentId === 'subprocess') return 'Process'
+  if (agentId === 'subprocess' || agentId === 'gitty') return 'Process'
 
   const hasProcess = runEvents?.some(
     (event) => event.type === 'process_start' || event.type === 'process_end',
