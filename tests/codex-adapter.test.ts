@@ -124,6 +124,41 @@ test('observeCodexRun healthy stream does not open a loop incident', async () =>
   }
 })
 
+test('observeCodexRun detects incidents before stream ends', async () => {
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-stream-'))
+  try {
+    const store = await openStore({ projectRoot: storeRoot })
+    let streamFinished = false
+    let detectedBeforeEnd = false
+
+    async function* streamingMessages() {
+      for (const message of authWriterLoopMessages()) {
+        yield message
+      }
+      streamFinished = true
+    }
+
+    const result = await observeCodexRun({
+      store,
+      task: 'Update auth.py and keep compatibility.',
+      cwd: storeRoot,
+      messages: streamingMessages(),
+      result: { id: 'run_codex_stream', status: 'finished' },
+      alertWriter: { write: () => {} },
+      onIncidentDetected: () => {
+        if (!streamFinished) {
+          detectedBeforeEnd = true
+        }
+      },
+    })
+
+    assert.ok(result.incidentsOpened >= 1)
+    assert.equal(detectedBeforeEnd, true)
+  } finally {
+    await rm(storeRoot, { recursive: true, force: true })
+  }
+})
+
 test('detector sees identical abnormality from codex adapter and manual harness', async () => {
   const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-detector-parity-'))
   try {

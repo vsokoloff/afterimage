@@ -136,6 +136,7 @@ export async function observeProcess(
     : null
 
   fsWatcher?.start()
+  await fsWatcher?.snapshot()
 
   child = spawn(command, { cwd, env, shell: false })
 

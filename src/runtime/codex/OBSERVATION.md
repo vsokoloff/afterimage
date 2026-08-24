@@ -44,14 +44,14 @@ Implementation lives under `src/runtime/codex/`. It feeds the same `LucidObserve
 import { observeCodexRun } from './runtime/codex/index.ts'
 import { openStore } from './store.ts'
 
-// Live: for await (const event of run.stream()) { ... } — pass collected messages:
+// Live: pass run.stream() directly — messages are observed as they arrive
 const result = await observeCodexRun({
   store: await openStore(),
   task: 'Fix auth.py without looping',
   cwd: process.cwd(),
   codexAgentId: 'bc-agent-1',
   codexRunId: 'run-1',
-  messages: recordedSdkMessages,
+  messages: run.stream(),
   result: await run.wait(),
 })
 ```

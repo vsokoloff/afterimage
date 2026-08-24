@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -107,14 +107,15 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
   const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-loop-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
+    // Gaps are under debounceMs so capture must not last-write-wins coalesce.
     const script = [
       "const fs = require('fs/promises');",
       "const target = 'loop-target.txt';",
       '(async () => {',
       "  await fs.writeFile(target, 'state-A');",
-      '  await new Promise((r) => setTimeout(r, 150));',
+      '  await new Promise((r) => setTimeout(r, 50));',
       "  await fs.writeFile(target, 'state-B');",
-      '  await new Promise((r) => setTimeout(r, 150));',
+      '  await new Promise((r) => setTimeout(r, 50));',
       "  await fs.writeFile(target, 'state-A');",
       '})();',
     ].join(' ')
@@ -123,7 +124,7 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
       store,
       command: [process.execPath, '-e', script],
       cwd: storeRoot,
-      filesystemDebounceMs: 60,
+      filesystemDebounceMs: 100,
       alertWriter: { write: () => {} },
     })
 
@@ -152,6 +153,54 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
     )
     assert.ok(loopIncident)
     assert.equal(loopIncident.status, 'open')
+  } finally {
+    await rm(storeRoot, { recursive: true, force: true })
+  }
+})
+
+test('runCommand detects loop when file already had A and process only writes B→A', async () => {
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-seed-loop-'))
+  try {
+    const store = await openStore({ projectRoot: storeRoot })
+    await writeFile(path.join(storeRoot, 'auth.py'), 'state-A', 'utf8')
+
+    const script = [
+      "const fs = require('fs/promises');",
+      "const target = 'auth.py';",
+      '(async () => {',
+      "  await fs.writeFile(target, 'state-B');",
+      '  await new Promise((r) => setTimeout(r, 50));',
+      "  await fs.writeFile(target, 'state-A');",
+      '})();',
+    ].join(' ')
+
+    const result = await runCommand({
+      store,
+      command: [process.execPath, '-e', script],
+      cwd: storeRoot,
+      filesystemDebounceMs: 100,
+      alertWriter: { write: () => {} },
+    })
+
+    assert.equal(result.exitCode, 0)
+    assert.ok(result.incidentsOpened >= 1)
+
+    const reloaded = await getRun(store, result.run.id)
+    assert.ok(reloaded)
+    const authWrites = reloaded.events.filter(
+      (e) => e.type === 'file_write' && e.path === 'auth.py',
+    )
+    assert.ok(authWrites.length >= 3)
+    const contents = authWrites.map((e) => (e.type === 'file_write' ? e.content : ''))
+    assert.deepEqual(contents.slice(0, 3), ['state-A', 'state-B', 'state-A'])
+
+    const incidents = await listIncidents(store)
+    assert.ok(
+      incidents.some(
+        (incident) =>
+          incident.runId === result.run.id && incident.disease === 'repeated-file-state',
+      ),
+    )
   } finally {
     await rm(storeRoot, { recursive: true, force: true })
   }

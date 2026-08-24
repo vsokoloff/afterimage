@@ -32,17 +32,14 @@ export type ObserveCodexRunOptions = {
   createObserver?: (store: LucidStore) => LucidObserver
 }
 
-async function collectMessages(
+async function* iterateMessages(
   source: Iterable<CodexSDKMessage> | AsyncIterable<CodexSDKMessage>,
-): Promise<CodexSDKMessage[]> {
+): AsyncGenerator<CodexSDKMessage> {
   if (Symbol.asyncIterator in Object(source)) {
-    const messages: CodexSDKMessage[] = []
-    for await (const message of source as AsyncIterable<CodexSDKMessage>) {
-      messages.push(message)
-    }
-    return messages
+    yield* source as AsyncIterable<CodexSDKMessage>
+  } else {
+    yield* source as Iterable<CodexSDKMessage>
   }
-  return [...(source as Iterable<CodexSDKMessage>)]
 }
 
 function finishStatusFromCodex(status: string | undefined): FinishRunStatus {
@@ -117,8 +114,7 @@ export async function observeCodexRun(
     ])
   }
 
-  const messages = await collectMessages(options.messages)
-  for (const message of messages) {
+  for await (const message of iterateMessages(options.messages)) {
     const normalized = codexMessageToRecordableEvents(message, normalizeContext)
     normalizeContext = normalized.context
     if (normalized.events.length > 0) {

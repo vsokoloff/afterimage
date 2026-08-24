@@ -1,5 +1,5 @@
 import { watch, type FSWatcher } from 'node:fs'
-import { readFile, stat } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 import { sha256Hex } from '../events.ts'
@@ -52,6 +52,11 @@ export type FilesystemWatcherOptions = {
   watchFn?: WatchFn
 }
 
+type ContentPayload = {
+  content: string
+  hash: string
+}
+
 /** True when a workspace-relative path should not be observed. */
 export function shouldIgnoreWorkspacePath(relativePath: string): boolean {
   const normalized = relativePath.replaceAll('\\', '/')
@@ -81,13 +86,50 @@ async function readTextualContent(absPath: string): Promise<string | null> {
   }
 }
 
+async function listTextualRelativePaths(workspaceRoot: string): Promise<string[]> {
+  const found: string[] = []
+  let entries: string[]
+  try {
+    entries = await readdir(workspaceRoot, { recursive: true })
+  } catch {
+    return found
+  }
+
+  for (const entry of entries) {
+    const relativePath = String(entry).replaceAll('\\', '/')
+    if (!relativePath || shouldIgnoreWorkspacePath(relativePath)) continue
+    const absPath = path.join(workspaceRoot, relativePath)
+    try {
+      const info = await stat(absPath)
+      if (!info.isFile()) continue
+    } catch {
+      continue
+    }
+    found.push(relativePath)
+  }
+  return found
+}
+
 export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
   const debounceMs = options.debounceMs ?? 100
   const watchImpl = options.watchFn ?? watch
   const workspaceRoot = path.resolve(options.workspaceRoot)
 
-  const lastHashByPath = new Map<string, string>()
-  const pending = new Map<string, NodeJS.Timeout>()
+  /** Baseline hashes taken at run start — not emitted until a path changes. */
+  const seedHashByPath = new Map<string, string>()
+  const seedContentByPath = new Map<string, string>()
+  const seedEmitted = new Set<string>()
+
+  /** Last hash actually delivered to onWrite. */
+  const lastEmittedHashByPath = new Map<string, string>()
+
+  /** Latest read waiting for trailing debounce flush. */
+  const pendingPayload = new Map<string, ContentPayload>()
+  const pendingTimers = new Map<string, NodeJS.Timeout>()
+
+  /** Serialize emits per path so baseline + intermediates stay ordered. */
+  const pathQueues = new Map<string, Promise<void>>()
+
   let watcher: FSWatcher | null = null
 
   const toRelative = (filename: string): string => {
@@ -97,33 +139,98 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
     return path.relative(workspaceRoot, abs).replaceAll('\\', '/')
   }
 
-  const flush = async (relativePath: string): Promise<void> => {
-    pending.delete(relativePath)
-    if (shouldIgnoreWorkspacePath(relativePath)) return
+  const enqueue = (relativePath: string, task: () => Promise<void>): Promise<void> => {
+    const previous = pathQueues.get(relativePath) ?? Promise.resolve()
+    const next = previous.then(task, task)
+    pathQueues.set(
+      relativePath,
+      next.catch(() => {
+        /* keep queue alive */
+      }),
+    )
+    return next
+  }
 
+  const emitWrite = async (
+    relativePath: string,
+    content: string,
+    hash: string,
+  ): Promise<void> => {
+    const seedHash = seedHashByPath.get(relativePath)
+    const seedContent = seedContentByPath.get(relativePath)
+
+    if (seedHash && seedContent !== undefined && !seedEmitted.has(relativePath)) {
+      if (hash !== seedHash) {
+        await options.onWrite({
+          path: relativePath,
+          content: seedContent,
+          hash: seedHash,
+        })
+        lastEmittedHashByPath.set(relativePath, seedHash)
+      }
+      seedEmitted.add(relativePath)
+    }
+
+    if (lastEmittedHashByPath.get(relativePath) === hash) return
+
+    await options.onWrite({ path: relativePath, content, hash })
+    lastEmittedHashByPath.set(relativePath, hash)
+  }
+
+  const readPayload = async (relativePath: string): Promise<ContentPayload | null> => {
+    if (shouldIgnoreWorkspacePath(relativePath)) return null
     const absPath = path.join(workspaceRoot, relativePath)
     const content = await readTextualContent(absPath)
-    if (content === null) return
+    if (content === null) return null
+    return { content, hash: sha256Hex(content) }
+  }
 
-    const hash = sha256Hex(content)
-    if (lastHashByPath.get(relativePath) === hash) return
+  const flushPending = async (relativePath: string): Promise<void> => {
+    pendingTimers.delete(relativePath)
+    const pending = pendingPayload.get(relativePath)
+    pendingPayload.delete(relativePath)
 
-    lastHashByPath.set(relativePath, hash)
-    await options.onWrite({ path: relativePath, content, hash })
+    const payload = pending ?? (await readPayload(relativePath))
+    if (!payload) return
+
+    await emitWrite(relativePath, payload.content, payload.hash)
+  }
+
+  /**
+   * Read promptly; emit any prior distinct pending hash; keep trailing debounce
+   * for the latest payload so settle/stop still work.
+   */
+  const ingest = async (relativePath: string): Promise<void> => {
+    if (shouldIgnoreWorkspacePath(relativePath)) return
+
+    const payload = await readPayload(relativePath)
+    if (!payload) return
+
+    await enqueue(relativePath, async () => {
+      const previous = pendingPayload.get(relativePath)
+      if (
+        previous &&
+        previous.hash !== payload.hash &&
+        previous.hash !== lastEmittedHashByPath.get(relativePath)
+      ) {
+        await emitWrite(relativePath, previous.content, previous.hash)
+      }
+      pendingPayload.set(relativePath, payload)
+
+      const existing = pendingTimers.get(relativePath)
+      if (existing) clearTimeout(existing)
+
+      pendingTimers.set(
+        relativePath,
+        setTimeout(() => {
+          void enqueue(relativePath, () => flushPending(relativePath))
+        }, debounceMs),
+      )
+    })
   }
 
   const schedule = (relativePath: string): void => {
-    if (shouldIgnoreWorkspacePath(relativePath)) return
-
-    const existing = pending.get(relativePath)
-    if (existing) clearTimeout(existing)
-
-    pending.set(
-      relativePath,
-      setTimeout(() => {
-        void flush(relativePath)
-      }, debounceMs),
-    )
+    void ingest(relativePath)
   }
 
   return {
@@ -140,22 +247,70 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
       })
     },
 
+    /**
+     * Walk the workspace and seed content hashes without emitting file_write
+     * events (baseline is emitted later on first real change).
+     */
+    async snapshot(): Promise<void> {
+      const paths = await listTextualRelativePaths(workspaceRoot)
+      for (const relativePath of paths) {
+        const payload = await readPayload(relativePath)
+        if (!payload) continue
+        seedHashByPath.set(relativePath, payload.hash)
+        seedContentByPath.set(relativePath, payload.content)
+      }
+    },
+
     async stop(): Promise<void> {
       if (watcher) {
         watcher.close()
         watcher = null
       }
 
-      const scheduled = [...pending.entries()]
-      for (const [, timer] of scheduled) clearTimeout(timer)
-      pending.clear()
+      const timers = [...pendingTimers.entries()]
+      for (const [, timer] of timers) clearTimeout(timer)
+      pendingTimers.clear()
 
-      await Promise.all(scheduled.map(([relativePath]) => flush(relativePath)))
+      const paths = new Set<string>([
+        ...timers.map(([relativePath]) => relativePath),
+        ...pendingPayload.keys(),
+      ])
+      await Promise.all(
+        [...paths].map((relativePath) =>
+          enqueue(relativePath, () => flushPending(relativePath)),
+        ),
+      )
     },
 
-    /** Test helper — simulate a debounced write without fs.watch. */
+    /**
+     * Test/helper: ingest a path change immediately (same path as fs.watch),
+     * awaiting intermediate emit logic without waiting for trailing debounce.
+     */
+    async noticeChange(relativePath: string): Promise<void> {
+      await ingest(relativePath)
+    },
+
+    /** Test helper — read path now and emit through the same baseline/dedupe path. */
     async observePath(relativePath: string): Promise<void> {
-      await flush(relativePath)
+      const existing = pendingTimers.get(relativePath)
+      if (existing) {
+        clearTimeout(existing)
+        pendingTimers.delete(relativePath)
+      }
+      await enqueue(relativePath, async () => {
+        const payload = await readPayload(relativePath)
+        if (!payload) return
+        const previous = pendingPayload.get(relativePath)
+        if (
+          previous &&
+          previous.hash !== payload.hash &&
+          previous.hash !== lastEmittedHashByPath.get(relativePath)
+        ) {
+          await emitWrite(relativePath, previous.content, previous.hash)
+        }
+        pendingPayload.delete(relativePath)
+        await emitWrite(relativePath, payload.content, payload.hash)
+      })
     },
   }
 }

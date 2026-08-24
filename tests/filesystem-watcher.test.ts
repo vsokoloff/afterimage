@@ -72,3 +72,63 @@ test('filesystem watcher emits again when content hash changes', async () => {
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('snapshot seeds baseline so pre-existing A then B→A yields A→B→A', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-fs-seed-'))
+  try {
+    const target = path.join(root, 'auth.py')
+    await writeFile(target, 'state-A', 'utf8')
+
+    const writes: string[] = []
+    const watcher = createFilesystemWatcher({
+      workspaceRoot: root,
+      debounceMs: 30,
+      onWrite: async ({ content }) => {
+        writes.push(content)
+      },
+    })
+
+    watcher.start()
+    await watcher.snapshot()
+    assert.deepEqual(writes, [])
+
+    await writeFile(target, 'state-B', 'utf8')
+    await watcher.observePath('auth.py')
+    await writeFile(target, 'state-A', 'utf8')
+    await watcher.observePath('auth.py')
+    await watcher.stop()
+
+    assert.deepEqual(writes, ['state-A', 'state-B', 'state-A'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('distinct hashes inside a debounce window are not collapsed', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-fs-fast-'))
+  try {
+    const target = path.join(root, 'auth.py')
+    await writeFile(target, 'state-A', 'utf8')
+
+    const writes: string[] = []
+    const watcher = createFilesystemWatcher({
+      workspaceRoot: root,
+      debounceMs: 80,
+      onWrite: async ({ content }) => {
+        writes.push(content)
+      },
+    })
+
+    watcher.start()
+    await watcher.noticeChange('auth.py')
+    await writeFile(target, 'state-B', 'utf8')
+    await watcher.noticeChange('auth.py')
+    await writeFile(target, 'state-A', 'utf8')
+    await watcher.noticeChange('auth.py')
+    await watcher.stop()
+
+    assert.deepEqual(writes, ['state-A', 'state-B', 'state-A'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
