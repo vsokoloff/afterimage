@@ -1,4 +1,9 @@
 export type {
+  AgentRuntimeAdapter,
+  AgentRuntimeObserveOptions,
+  AgentRuntimeObserveResult,
+} from './agent-types.ts'
+export type {
   ProcessSpawnFn,
   RuntimeAdapter,
   RuntimeObserveOptions,
@@ -14,6 +19,7 @@ export {
   type RunIncidentPolicy,
 } from './policy.ts'
 export { formatIncidentAlert, printIncidentAlert } from './incident-alert.ts'
+export { handleIncidentDetection } from './incident-handling.ts'
 export { incidentDetailUrl } from './urls.ts'
 export {
   createFilesystemWatcher,
@@ -26,3 +32,10 @@ export {
   processRuntimeAdapter,
   runCommand,
 } from './process-adapter.ts'
+export {
+  codexRuntimeAdapter,
+  observeCodexRun,
+  codexMessageToRecordableEvents,
+  type CodexSDKMessage,
+  type ObserveCodexRunOptions,
+} from './codex/index.ts'
