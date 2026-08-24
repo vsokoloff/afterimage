@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { fetchIncident, fetchIncidents, fetchRun, fetchRuns } from './api.ts'
+import { fetchActivity, fetchAgentProfile, fetchAgents } from './agents/index.ts'
 import { openStore, type LucidStore } from './store.ts'
 import { buildVisit } from './visit.ts'
 
@@ -11,6 +12,7 @@ const staticFiles = new Map([
   ['/', { file: resolve(process.cwd(), 'web/index.html'), type: 'text/html; charset=utf-8' }],
   ['/styles.css', { file: resolve(process.cwd(), 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/app.js', { file: resolve(process.cwd(), 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/characters.js', { file: resolve(process.cwd(), 'web/characters.js'), type: 'text/javascript; charset=utf-8' }],
 ])
 
 export type ServerContext = {
@@ -71,6 +73,30 @@ export async function handleRequest(
   try {
     if (request.method !== 'GET') {
       methodNotAllowed(response)
+      return
+    }
+
+    if (url.pathname === '/api/agents') {
+      sendJson(response, 200, await fetchAgents(context.store))
+      return
+    }
+
+    const agentMatch = url.pathname.match(/^\/api\/agents\/([^/]+)$/)
+    if (agentMatch) {
+      const detail = await fetchAgentProfile(
+        context.store,
+        decodeURIComponent(agentMatch[1]!),
+      )
+      if (!detail) {
+        notFound(response, `Agent not found: ${agentMatch[1]}`)
+        return
+      }
+      sendJson(response, 200, detail)
+      return
+    }
+
+    if (url.pathname === '/api/activity') {
+      sendJson(response, 200, await fetchActivity(context.store))
       return
     }
 

@@ -1,3 +1,5 @@
+import { agentCharacter, moodForStatus } from './characters.js'
+
 const content = document.querySelector('#content')
 const crumb = document.querySelector('#crumb')
 const bootError = document.querySelector('#boot-error')
@@ -11,17 +13,32 @@ function el(tag, className, text) {
 }
 
 function parseRoute() {
-  const raw = (location.hash || '#/incidents').replace(/^#/, '')
+  const raw = (location.hash || '#/agents').replace(/^#/, '')
   const parts = raw.split('/').filter(Boolean)
-  if (parts[0] === 'incidents' && parts[1]) {
+  const page = parts[0] || 'agents'
+
+  if (page === 'agents' && parts[1]) {
+    return { page: 'agent', agentId: decodeURIComponent(parts[1]) }
+  }
+  if (page === 'incidents' && parts[1]) {
     return { page: 'incident', incidentId: parts[1] }
   }
-  return { page: 'incidents' }
+  if (page === 'activity') return { page: 'activity' }
+  if (page === 'incidents') return { page: 'incidents' }
+  if (page === 'hospital') return { page: 'hospital' }
+  if (page === 'memory') return { page: 'memory' }
+  return { page: 'agents' }
 }
 
 function setActiveNav(route) {
+  const key =
+    route.page === 'agent'
+      ? 'agents'
+      : route.page === 'incident'
+        ? 'hospital'
+        : route.page
   nav.querySelectorAll('.nav-item').forEach((link) => {
-    link.classList.toggle('is-active', link.dataset.route === 'incidents')
+    link.classList.toggle('is-active', link.dataset.route === key)
   })
 }
 
@@ -38,21 +55,14 @@ function formatTime(iso) {
   }
 }
 
-function statusBadge(status, severity) {
-  const label =
-    {
-      open: 'Open',
-      in_hospital: 'In hospital',
-      cleared: 'Cleared',
-      closed: 'Closed',
-    }[status] ?? status
-  const cls =
-    severity === 'critical'
-      ? 'badge badge--critical'
-      : status === 'cleared' || status === 'closed'
-        ? 'badge badge--cleared'
-        : 'badge badge--open'
-  return el('span', cls, label)
+function formatDuration(ms) {
+  if (ms == null) return '—'
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ${minutes % 60}m`
 }
 
 async function fetchJson(url) {
@@ -88,6 +98,411 @@ function emptyState(message) {
   return el('p', 'empty', message)
 }
 
+function agentStatusBadge(status) {
+  const label =
+    {
+      working: 'Working',
+      idle: 'Idle',
+      unhealthy: 'Unhealthy',
+      stopped: 'Stopped',
+    }[status] ?? status
+  const cls =
+    {
+      working: 'badge badge--working',
+      idle: 'badge badge--idle',
+      unhealthy: 'badge badge--critical',
+      stopped: 'badge badge--stopped',
+    }[status] ?? 'badge'
+  return el('span', cls, label)
+}
+
+function incidentStatusBadge(status, severity) {
+  const label =
+    {
+      open: 'Open',
+      in_hospital: 'In hospital',
+      cleared: 'Cleared',
+      closed: 'Closed',
+    }[status] ?? status
+  const cls =
+    severity === 'critical'
+      ? 'badge badge--critical'
+      : status === 'cleared' || status === 'closed'
+        ? 'badge badge--cleared'
+        : 'badge badge--open'
+  return el('span', cls, label)
+}
+
+function mascotForAgent(agent, size = 'md') {
+  const mood = moodForStatus(agent.status === 'unhealthy' ? 'critical' : 'cheerful')
+  const characterId = agent.characterId ?? 'ops'
+  return agentCharacter(characterId, { size, mood, title: agent.name })
+}
+
+function agentLink(agentId, label) {
+  const link = el('a', 'link-agent', label)
+  link.href = `#/agents/${encodeURIComponent(agentId)}`
+  return link
+}
+
+/* ─── Agents ─── */
+
+function renderAgentCard(agent) {
+  const card = el('button', 'agent-card', '')
+  card.type = 'button'
+  card.addEventListener('click', () => {
+    location.hash = `#/agents/${encodeURIComponent(agent.id)}`
+  })
+
+  const top = el('div', 'agent-card-top')
+  const identity = el('div', 'agent-card-identity')
+  identity.append(mascotForAgent(agent, 'sm'))
+  const copy = document.createElement('div')
+  copy.append(el('h2', '', agent.name), el('p', 'role', agent.role ?? agent.runtime))
+  identity.append(copy)
+  top.append(identity, agentStatusBadge(agent.status))
+  card.append(top)
+
+  if (agent.currentActivity) {
+    card.append(el('p', 'activity-line', agent.currentActivity))
+  } else if (agent.status === 'idle') {
+    card.append(el('p', 'activity-line muted', 'No active task'))
+  } else if (agent.status === 'stopped') {
+    card.append(el('p', 'activity-line muted', 'Last run stopped'))
+  }
+
+  const meta = el('div', 'meta-row')
+  meta.append(el('span', 'chip', agent.runtime))
+  if (agent.currentRunDurationMs != null) {
+    meta.append(el('span', 'chip', formatDuration(agent.currentRunDurationMs)))
+  }
+  if (agent.openIncidentCount > 0) {
+    meta.append(el('span', 'chip chip--fault', `${agent.openIncidentCount} incident`))
+  }
+  card.append(meta)
+
+  const actions = el('div', 'card-actions')
+  actions.append(el('span', 'btn btn-ghost', 'Open profile'))
+  card.append(actions)
+  return card
+}
+
+async function renderAgentsPage() {
+  crumb.textContent = 'Agents'
+  content.replaceChildren(el('p', 'activity-line', 'Loading agents…'))
+
+  const data = await fetchJson('/api/agents')
+  content.replaceChildren()
+
+  const head = el('div', 'page-head')
+  head.append(
+    el('h1', '', 'Agents'),
+    el(
+      'p',
+      '',
+      'Manage connected agents from persisted runs. Status and activity are derived from real observation — never invented.',
+    ),
+  )
+  content.append(head)
+
+  if (!data.agents.length) {
+    content.append(
+      emptyState(
+        'No agents observed yet. Run a command with Lucid (`npm run lucid -- run -- …`) or attach a Codex stream.',
+      ),
+    )
+    return
+  }
+
+  const toolbar = el('div', 'toolbar')
+  const search = document.createElement('input')
+  search.type = 'search'
+  search.placeholder = 'Search agents…'
+  search.setAttribute('aria-label', 'Search agents')
+  toolbar.append(search)
+  content.append(toolbar)
+
+  const grid = el('div', 'agent-grid')
+  const paint = () => {
+    const q = search.value.trim().toLowerCase()
+    grid.replaceChildren()
+    const list = data.agents.filter((agent) => {
+      if (!q) return true
+      return (
+        agent.name.toLowerCase().includes(q) ||
+        agent.id.toLowerCase().includes(q) ||
+        (agent.role ?? '').toLowerCase().includes(q) ||
+        agent.runtime.toLowerCase().includes(q)
+      )
+    })
+    for (const agent of list) {
+      grid.append(renderAgentCard(agent))
+    }
+    if (!list.length) grid.append(emptyState('No agents match.'))
+  }
+  search.addEventListener('input', paint)
+  paint()
+  content.append(grid)
+}
+
+async function renderAgentProfile(agentId) {
+  crumb.textContent = 'Agents / …'
+  content.replaceChildren(el('p', 'activity-line', 'Loading agent…'))
+
+  const profile = await fetchJson(`/api/agents/${encodeURIComponent(agentId)}`)
+  const { agent, currentRun, recentRuns, recentEvents, openIncidents, pastIncidents } = profile
+
+  content.replaceChildren()
+  crumb.textContent = `Agents / ${agent.name}`
+
+  const layout = el('div', 'profile')
+  const hero = el('div', 'profile-hero')
+  const heroMain = el('div', 'profile-hero-main')
+  heroMain.append(mascotForAgent(agent, 'lg'))
+  const heroCopy = document.createElement('div')
+  heroCopy.append(
+    el('h1', '', agent.name),
+    el('p', 'role', agent.role ?? 'Observed agent'),
+    el('p', 'activity-line', `${agent.runtime} · ${agent.runCount} run${agent.runCount === 1 ? '' : 's'}`),
+  )
+  const badges = el('div', 'meta-row')
+  badges.append(agentStatusBadge(agent.status))
+  if (agent.openIncidentCount > 0) {
+    badges.append(el('span', 'chip chip--fault', `${agent.openIncidentCount} open incident`))
+  }
+  heroCopy.append(badges)
+  heroMain.append(heroCopy)
+  hero.append(heroMain)
+
+  const actions = el('div', 'actions')
+  const back = el('button', 'btn', '← Agents')
+  back.type = 'button'
+  back.addEventListener('click', () => {
+    location.hash = '#/agents'
+  })
+  actions.append(back)
+  hero.append(actions)
+  layout.append(hero)
+
+  if (openIncidents.length > 0) {
+    const alert = el('div', 'medical-banner')
+    alert.append(
+      el('p', 'medical-banner-title', 'Needs medical attention'),
+      el(
+        'p',
+        'medical-banner-copy',
+        `${openIncidents.length} unresolved incident${openIncidents.length === 1 ? '' : 's'} require Hospital diagnostics.`,
+      ),
+    )
+    const hospitalBtn = el('button', 'btn btn-primary', 'View in Hospital')
+    hospitalBtn.type = 'button'
+    hospitalBtn.addEventListener('click', () => {
+      location.hash = `#/incidents/${openIncidents[0].id}`
+    })
+    alert.append(hospitalBtn)
+    layout.append(alert)
+  }
+
+  layout.append(
+    section(
+      'Current status',
+      facts([
+        ['Status', agent.status],
+        ['Runtime', agent.runtime],
+        ['Current activity', agent.currentActivity ?? '—'],
+        ['Run duration', agent.currentRunDurationMs != null ? formatDuration(agent.currentRunDurationMs) : '—'],
+        ['Last seen', formatTime(agent.lastSeenAt)],
+      ]),
+    ),
+  )
+
+  layout.append(
+    section(
+      'Current task',
+      currentRun
+        ? facts([
+            ['Run', currentRun.id],
+            ['Run status', currentRun.status],
+            ['Started', formatTime(currentRun.startedAt)],
+            ['Events', String(currentRun.events.length)],
+            [
+              'Latest prompt',
+              [...currentRun.events].reverse().find((event) => event.type === 'prompt')?.text ?? '—',
+            ],
+          ])
+        : emptyState('No active run.'),
+    ),
+  )
+
+  layout.append(
+    section(
+      'Recent runs',
+      recentRuns.length
+        ? (() => {
+            const list = el('ul', 'run-list')
+            for (const run of recentRuns) {
+              const item = el('li', 'run-list-item')
+              item.append(
+                el('code', 'mono', run.id),
+                el('span', 'incident-meta', `${run.status} · ${formatTime(run.startedAt)}`),
+              )
+              list.append(item)
+            }
+            return list
+          })()
+        : emptyState('No runs recorded.'),
+    ),
+  )
+
+  layout.append(
+    section(
+      'Recent activity',
+      recentEvents.length
+        ? (() => {
+            const list = el('ul', 'activity-feed')
+            for (const event of recentEvents.slice(0, 20)) {
+              const item = el('li', 'activity-item')
+              item.append(
+                el('span', 'activity-time', formatTime(event.timestamp)),
+                el('code', 'mono', event.type),
+                el('span', '', summarizeEvent(event)),
+              )
+              list.append(item)
+            }
+            return list
+          })()
+        : emptyState('No events yet.'),
+    ),
+  )
+
+  layout.append(
+    section(
+      'Open incidents',
+      openIncidents.length
+        ? (() => {
+            const list = el('div', 'incident-list')
+            for (const incident of openIncidents) {
+              list.append(renderIncidentCard({ ...incident, severity: 'critical' }))
+            }
+            return list
+          })()
+        : emptyState('No open incidents.'),
+    ),
+  )
+
+  layout.append(
+    section(
+      'Past incidents',
+      pastIncidents.length
+        ? (() => {
+            const list = el('div', 'incident-list')
+            for (const incident of pastIncidents.slice(0, 10)) {
+              list.append(renderIncidentCard({ ...incident, severity: 'unknown' }))
+            }
+            return list
+          })()
+        : emptyState('No cleared incidents yet.'),
+    ),
+  )
+
+  content.append(layout)
+}
+
+/* ─── Activity ─── */
+
+async function renderActivityPage() {
+  crumb.textContent = 'Activity'
+  content.replaceChildren(el('p', 'activity-line', 'Loading activity…'))
+
+  const data = await fetchJson('/api/activity')
+  content.replaceChildren()
+
+  const head = el('div', 'page-head')
+  head.append(
+    el('h1', '', 'Activity'),
+    el('p', '', 'Recent events from persisted agent runs — newest first.'),
+  )
+  content.append(head)
+
+  if (!data.activity.length) {
+    content.append(emptyState('No activity recorded yet.'))
+    return
+  }
+
+  const list = el('ul', 'activity-feed')
+  for (const item of data.activity) {
+    const row = el('li', 'activity-item')
+    row.append(
+      el('span', 'activity-time', formatTime(item.at)),
+      agentLink(item.agentId, item.agentId),
+      el('code', 'mono', item.type),
+      el('span', '', item.summary),
+    )
+    list.append(row)
+  }
+  content.append(list)
+}
+
+/* ─── Hospital landing ─── */
+
+async function renderHospitalPage() {
+  crumb.textContent = 'Hospital'
+  content.replaceChildren(el('p', 'activity-line', 'Loading hospital queue…'))
+
+  const data = await fetchJson('/api/incidents')
+  content.replaceChildren()
+
+  const head = el('div', 'page-head hospital-head')
+  const title = el('div', 'hospital-title')
+  title.append(
+    el('h1', '', 'Hospital'),
+    el(
+      'p',
+      '',
+      'Diagnostic records for agents with open failures. Manager view stays on Agents; this is where you inspect and treat.',
+    ),
+  )
+  head.append(title)
+  content.append(head)
+
+  const open = data.incidents.filter((incident) =>
+    ['open', 'in_hospital'].includes(incident.status),
+  )
+
+  if (!open.length) {
+    content.append(emptyState('No patients in Hospital — no open incidents.'))
+    return
+  }
+
+  const list = el('div', 'incident-list')
+  list.append(el('h2', 'incident-group-title', 'Needs attention'))
+  for (const incident of open) {
+    list.append(renderIncidentCard(incident))
+  }
+  content.append(list)
+}
+
+/* ─── Memory ─── */
+
+function renderMemoryPage() {
+  crumb.textContent = 'Memory'
+  content.replaceChildren()
+
+  const head = el('div', 'page-head')
+  head.append(
+    el('h1', '', 'Memory'),
+    el('p', '', 'Agent memory is not persisted in Lucid yet.'),
+  )
+  content.append(head)
+  content.append(
+    emptyState(
+      'Memory department is unavailable — no real memory store is connected. Lucid will not show invented learned/failure lists.',
+    ),
+  )
+}
+
+/* ─── Incidents (shared list + hospital record) ─── */
+
 function renderIncidentCard(incident) {
   const card = el('button', 'incident-card', '')
   card.type = 'button'
@@ -101,7 +516,7 @@ function renderIncidentCard(incident) {
     el('h2', '', incident.title),
     el('p', 'incident-meta', `${incident.department ?? '—'} / ${incident.disease ?? '—'}`),
   )
-  top.append(copy, statusBadge(incident.status, incident.severity))
+  top.append(copy, incidentStatusBadge(incident.status, incident.severity))
   card.append(top)
 
   if (incident.symptom) {
@@ -127,12 +542,9 @@ async function renderIncidentsPage() {
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Incidents'),
-    el('p', '', 'Open loops and recently cleared cases from local agent runs.'),
+    el('p', '', 'All incidents from local agent runs — open and recently cleared.'),
   )
   content.append(head)
-
-  const open = data.incidents.filter((i) => ['open', 'in_hospital'].includes(i.status))
-  const cleared = data.incidents.filter((i) => ['cleared', 'closed'].includes(i.status))
 
   if (!data.incidents.length) {
     content.append(
@@ -141,15 +553,17 @@ async function renderIncidentsPage() {
     return
   }
 
+  const open = data.incidents.filter((i) => ['open', 'in_hospital'].includes(i.status))
+  const cleared = data.incidents.filter((i) => ['cleared', 'closed'].includes(i.status))
+
   const list = el('div', 'incident-list')
 
+  list.append(el('h2', 'incident-group-title', 'Open incidents'))
   if (open.length) {
-    list.append(el('h2', 'incident-group-title', 'Open incidents'))
     for (const incident of open) {
       list.append(renderIncidentCard(incident))
     }
   } else {
-    list.append(el('h2', 'incident-group-title', 'Open incidents'))
     list.append(emptyState('No open incidents.'))
   }
 
@@ -161,6 +575,23 @@ async function renderIncidentsPage() {
   }
 
   content.append(list)
+}
+
+function summarizeEvent(event) {
+  switch (event.type) {
+    case 'prompt':
+      return `${event.role ?? 'prompt'}: ${event.text}`
+    case 'model_response':
+      return event.reasonSummary || event.text
+    case 'tool_result':
+      return `${event.toolName} ok=${event.ok}`
+    case 'file_write':
+      return `${event.path} hash=${event.hash.slice(0, 12)}`
+    case 'error':
+      return event.message
+    default:
+      return event.type
+  }
 }
 
 function renderHashChain(chain) {
@@ -218,25 +649,6 @@ function renderRootCause(rootCauseDiagnosis, rootCauseEvidenceEvents) {
   return body
 }
 
-function summarizeEvent(event) {
-  switch (event.type) {
-    case 'prompt':
-      return `${event.role ?? 'prompt'}: ${event.text}`
-    case 'model_response':
-      return event.reasonSummary || event.text
-    case 'tool_result':
-      return `${event.toolName} ok=${event.ok} ${JSON.stringify(event.output ?? '')}`
-    case 'test_result':
-      return `${event.name ?? 'test'} passed=${event.passed} ${event.output ?? ''}`
-    case 'error':
-      return event.message
-    case 'file_write':
-      return `${event.path} hash=${event.hash.slice(0, 12)}`
-    default:
-      return event.type
-  }
-}
-
 function renderTreatment(treatment) {
   if (!treatment) {
     return emptyState('No treatment prescribed.')
@@ -282,7 +694,7 @@ function renderTreatment(treatment) {
 }
 
 async function renderIncidentDetail(incidentId) {
-  crumb.textContent = 'Incidents / …'
+  crumb.textContent = 'Hospital / …'
   content.replaceChildren(el('p', 'activity-line', 'Loading incident…'))
 
   const detail = await fetchJson(`/api/incidents/${encodeURIComponent(incidentId)}`)
@@ -291,33 +703,43 @@ async function renderIncidentDetail(incidentId) {
   const { incident, run, diagnosis, rootCauseDiagnosis, rootCauseEvidenceEvents, treatment, recheck, hashChain, fileStates, evidence } =
     detail
 
-  crumb.textContent = `Incidents / ${incident.title}`
+  crumb.textContent = `Hospital / ${incident.title}`
 
-  const head = el('div', 'page-head incident-head')
-  const titleRow = el('div', 'incident-head-row')
-  titleRow.append(
-    (() => {
-      const copy = document.createElement('div')
-      copy.append(
-        el('h1', '', incident.title),
-        el(
-          'p',
-          '',
-          `${detail.detector?.department ?? '—'} / ${detail.detector?.disease ?? '—'} · severity ${detail.severity}`,
-        ),
-      )
-      return copy
-    })(),
-    statusBadge(incident.status, detail.severity),
+  const head = el('div', 'page-head incident-head hospital-head')
+  const title = el('div', 'hospital-title')
+  title.append(
+    el('h1', '', incident.title),
+    el(
+      'p',
+      '',
+      `${detail.detector?.department ?? '—'} / ${detail.detector?.disease ?? '—'} · severity ${detail.severity}`,
+    ),
   )
+  const titleRow = el('div', 'incident-head-row')
+  titleRow.append(title, incidentStatusBadge(incident.status, detail.severity))
   head.append(titleRow)
 
-  const back = el('button', 'btn', '← Incidents')
-  back.type = 'button'
-  back.addEventListener('click', () => {
+  const actions = el('div', 'actions')
+  const backIncidents = el('button', 'btn', '← Incidents')
+  backIncidents.type = 'button'
+  backIncidents.addEventListener('click', () => {
     location.hash = '#/incidents'
   })
-  head.append(back)
+  const backHospital = el('button', 'btn btn-ghost', 'Hospital queue')
+  backHospital.type = 'button'
+  backHospital.addEventListener('click', () => {
+    location.hash = '#/hospital'
+  })
+  if (run?.agentId) {
+    const agentBtn = el('button', 'btn btn-ghost', 'Agent profile')
+    agentBtn.type = 'button'
+    agentBtn.addEventListener('click', () => {
+      location.hash = `#/agents/${encodeURIComponent(run.agentId)}`
+    })
+    actions.append(agentBtn)
+  }
+  actions.append(backHospital, backIncidents)
+  head.append(actions)
   content.append(head)
 
   const layout = el('div', 'incident-detail')
@@ -435,17 +857,34 @@ async function render() {
   setActiveNav(route)
 
   try {
-    if (route.page === 'incident') {
-      await renderIncidentDetail(route.incidentId)
-    } else {
-      await renderIncidentsPage()
+    switch (route.page) {
+      case 'agent':
+        await renderAgentProfile(route.agentId)
+        break
+      case 'activity':
+        await renderActivityPage()
+        break
+      case 'incidents':
+        await renderIncidentsPage()
+        break
+      case 'incident':
+        await renderIncidentDetail(route.incidentId)
+        break
+      case 'hospital':
+        await renderHospitalPage()
+        break
+      case 'memory':
+        renderMemoryPage()
+        break
+      default:
+        await renderAgentsPage()
     }
     bootError.hidden = true
   } catch (error) {
     console.error(error)
     bootError.hidden = false
     content.replaceChildren(
-      emptyState('Could not load from /api/incidents. Is npm run web running?'),
+      emptyState('Could not load from Lucid API. Is npm run web running?'),
     )
   }
 }

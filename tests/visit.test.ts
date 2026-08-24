@@ -19,31 +19,48 @@ test('visit response keeps detector and case data separate', () => {
   assert.equal(visit.verification.passed, true)
 })
 
-test('serves incidents UI shell backed by /api/incidents', async () => {
+test('serves command center UI backed by real agent and incident APIs', async () => {
   const { url, server } = await startServer({ port: 0 })
   try {
     const page = await fetch(url)
     const html = await page.text()
     assert.equal(page.status, 200)
-    assert.match(html, /Lucid — Incidents/)
+    assert.match(html, /Lucid — Agent Command Center/)
+    assert.match(html, /#\/agents/)
+    assert.match(html, /#\/activity/)
     assert.match(html, /#\/incidents/)
-    assert.doesNotMatch(html, /Agents/)
-    assert.doesNotMatch(html, /Memory/)
+    assert.match(html, /#\/hospital/)
+    assert.match(html, /#\/memory/)
 
     const appAsset = await fetch(`${url}/app.js`)
     assert.equal(appAsset.status, 200)
     const appSource = await appAsset.text()
+    assert.match(appSource, /\/api\/agents/)
+    assert.match(appSource, /\/api\/activity/)
     assert.match(appSource, /\/api\/incidents/)
-    assert.match(appSource, /renderIncidentsPage/)
-    assert.match(appSource, /renderIncidentDetail/)
+    assert.match(appSource, /renderAgentsPage/)
+    assert.match(appSource, /renderHospitalPage/)
+    assert.match(appSource, /characters\.js/)
+    assert.doesNotMatch(appSource, /healthScore/)
     assert.doesNotMatch(appSource, /\/api\/visit/)
-    assert.doesNotMatch(appSource, /agents\.js/)
-    assert.doesNotMatch(appSource, /command center/)
+
+    const characters = await fetch(`${url}/characters.js`)
+    assert.equal(characters.status, 200)
+
+    const agentsApi = await fetch(`${url}/api/agents`)
+    assert.equal(agentsApi.status, 200)
+    const agentsBody = await agentsApi.json()
+    assert.ok(Array.isArray(agentsBody.agents))
+
+    const activityApi = await fetch(`${url}/api/activity`)
+    assert.equal(activityApi.status, 200)
+    const activityBody = await activityApi.json()
+    assert.ok(Array.isArray(activityBody.activity))
 
     const incidentsApi = await fetch(`${url}/api/incidents`)
     assert.equal(incidentsApi.status, 200)
-    const body = await incidentsApi.json()
-    assert.ok(Array.isArray(body.incidents))
+    const incidentsBody = await incidentsApi.json()
+    assert.ok(Array.isArray(incidentsBody.incidents))
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()))

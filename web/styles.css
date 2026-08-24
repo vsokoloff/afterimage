@@ -375,6 +375,7 @@ input:focus-visible {
   border-radius: var(--radius);
   text-align: left;
   color: inherit;
+  cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -479,6 +480,21 @@ input:focus-visible {
 .badge--healthy {
   color: var(--ok);
   background: var(--ok-soft);
+}
+
+.badge--working {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.badge--idle {
+  color: var(--text-muted);
+  background: rgb(139 147 167 / 12%);
+}
+
+.badge--stopped {
+  color: var(--warn);
+  background: var(--warn-soft);
 }
 
 .badge--degraded {
@@ -604,6 +620,95 @@ input:focus-visible {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.activity-line.muted {
+  color: var(--text-faint);
+}
+
+.chip--fault {
+  color: var(--fault);
+  background: var(--fault-soft);
+  border-color: rgb(232 106 92 / 35%);
+}
+
+.medical-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: var(--fault-soft);
+  border: 1px solid rgb(232 106 92 / 35%);
+  border-radius: var(--radius);
+}
+
+.medical-banner-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--fault);
+}
+
+.medical-banner-copy {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.activity-feed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.activity-time {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.link-agent {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.run-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.run-list-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .health-meter {
