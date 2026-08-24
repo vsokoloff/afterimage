@@ -1,56 +1,43 @@
-# Afterimage
+# Afterimage (Lucid)
 
-**An open-source hospital that runs alongside your agents.**
+**Local-first agent command center** with a **Hospital** for failure patterns.
 
-Afterimage watches how agents behave, runs diagnostic tests when something looks wrong, tells you which part of the agent is causing the problem, and can apply a targeted **treatment** — a change to instructions, memory policy, retry strategy, tools, and so on.
+`lucid open` → local dashboard. No accounts, no SaaS login.
 
-It is **not** “ask AI to fix my code.”
+Hospital language is only in feature labels. The chrome is a developer tool (Linear/Sentry-style), not a medical website.
 
-Local-first · open source · BYO model / API key. Install once, attach an agent, observe quietly when healthy.
+> **Today’s ship:** Looping → repeated file state — detect → diagnose → prescribe → recheck. Auth Agent’s Hospital path is grounded in the real detector via `GET /api/visit`. Other agents and departments are clearly labeled mock/stub.
 
-> **Today’s ship:** one department, one disease — **Looping → repeated file state** — end to end (detect → diagnose → prescribe → recheck). Other departments are documented stubs.
-
-Website = medical record for one incident. Product = terminal / runtime.
-
-## Pitch
+## Mental model
 
 ```text
-OBSERVE → TEST → ABNORMALITY → EVIDENCE → DIAGNOSIS → TREATMENT → RECHECK
+Command center (Agents / Activity / Memory)
+        └── Hospital (per-agent diagnostics)
+                OBSERVE → TEST → ABNORMALITY → EVIDENCE → DIAGNOSIS → TREATMENT → RECHECK
 ```
 
-1. Watch file-state (and later: tools, memory, cost).
-2. When a known failure pattern fires, show evidence.
-3. Point at the component to change (instructions, tools, …).
-4. Apply a supported treatment when safe; unsafe ones require review.
-5. Recheck that the abnormality is gone.
+- **Agents** — route work, inspect health, open profiles
+- **Hospital** — progressive department tests; real looping evidence for Auth Agent
+- **`lucid fix`** — CLI prints treatment; the UI does **not** fake a web patch
 
-## Departments
+## Demo path
 
-| Department | Focus | Status |
-|---|---|---|
-| **Looping** | File-state loops, repeated tools, oscillation, undo/redo | **repeated-file-state shipped**; others stubbed |
-| Memory | Forgotten failures, repeated research, constraint forgetting | Stub |
-| Instructions | Conflicting goals, ambiguous priority | Stub |
-| Tools | Bad schemas, wrong tool, ignoring output | Stub |
-| Cost / Efficiency | Token explosion, rereading, excessive retries | Stub |
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for the plugin shape and contributor layout.
-
-## Demo story (shipped)
-
-Admit **Auth Writer** → observe `A → B → A` on `auth.py` → Looping / repeated-file-state → conflicting instructions → prescribed instruction change → recheck with new states → discharged.
-
-The detector only decides whether a loop happened. Root cause and treatment for this fixture come from case data, not from the UI inventing a story.
+1. `npm run demo` or `npm run web` → open dashboard  
+2. **Agents** → **Auth Agent** (unhealthy) → **View**  
+3. **Send to Hospital** → **Run diagnostics**  
+4. See A→B→A hashes → root cause (case notes) → treatment  
+5. Copy/run `npm run lucid -- fix` → **Mark treatment applied (simulate)**  
+6. **Recheck** → pass → **Clear & return** → health up + memory learned  
 
 ## Run
 
-Node 20 or later.
+Node 20+.
 
 ```sh
 npm install
 npm test
-npm run demo          # terminal trace + medical-record UI
-npm run web           # visit UI only
+npm run web           # command center UI
+npm run demo          # terminal trace + open UI
 npm run lucid -- departments
 npm run lucid -- doctor
 npm run lucid -- inspect
@@ -58,33 +45,45 @@ npm run lucid -- fix
 npm run lucid -- recheck
 ```
 
-Demo opens [http://127.0.0.1:3000](http://127.0.0.1:3000).
+Dashboard: [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
-### CLI (local scripts — not a published global package yet)
+### Real vs mock
 
-```text
-lucid init / attach     stubs
-lucid status            fixture status
-lucid doctor            run Looping → repeated-file-state
-lucid inspect           evidence + diagnosis
-lucid fix               prescribe treatment (review required)
-lucid recheck           verify post-treatment trace
-lucid departments       list departments / diseases
-```
+| Piece | Status |
+|---|---|
+| Looping / repeated-file-state detector | **Real** |
+| `GET /api/visit` (Auth Agent hospital) | **Real** |
+| Root cause + treatment text | **Case fixture** (not UI invention) |
+| `lucid fix` | **Real CLI print**; no auto-apply |
+| Other agents (Appy, Test, …) | **Mock** |
+| Memory / Instructions / Tools / Cost depts | **Stub / mock** (labeled in UI) |
+| “Mark treatment applied” | **Demo simulate** only |
+
+## Departments
+
+| Department | Focus | Status |
+|---|---|---|
+| **Looping** | File-state loops, … | **repeated-file-state shipped** |
+| Memory | Forgotten failures, … | Stub |
+| Instructions | Conflicting goals, … | Stub |
+| Tools | Bad schemas, … | Stub |
+| Cost / Efficiency | Token explosion, … | Stub |
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Layout
 
 ```text
 src/
   departments/                 Hospital plugin system
-    looping/
-      repeated-file-state/     SHA-256 detect + diagnose + treat + verify
-    index.ts                   Registry (incl. stub departments)
-  case.ts                      Auth Writer fixture
-  visit.ts                     Medical-record API payload
-  cli.ts                       Thin local CLI
-  demo.ts / server.ts / web/   Demo + visit UI
-ARCHITECTURE.md
+    looping/repeated-file-state/
+  case.ts                      Auth Agent fixture
+  visit.ts                     /api/visit payload
+  cli.ts                       lucid doctor / fix / …
+  demo.ts / server.ts
+web/
+  index.html / app.js / styles.css
+  data/agents.js               Command-center fixtures
 ```
 
 ## Repo

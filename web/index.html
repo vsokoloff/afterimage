@@ -3,122 +3,46 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Afterimage</title>
-    <meta name="description" content="Local hospital for agents — medical record for Looping / repeated file state. Detect, diagnose, prescribe treatment, recheck.">
+    <title>Lucid — Agent Command Center</title>
+    <meta name="description" content="Local-first agent command center. Hospital for looping and other failure patterns. No accounts.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <div class="chassis">
-      <header class="bezel">
-        <a class="logo" href="/">
-          <span class="pip" aria-hidden="true"></span>
-          Afterimage
-        </a>
-        <p id="status">Idle</p>
-      </header>
+    <div class="app" id="app">
+      <aside class="sidebar" aria-label="Primary">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">Lucid</span>
+        </div>
+        <nav class="nav" id="nav">
+          <a class="nav-item" data-route="agents" href="#/agents">Agents</a>
+          <a class="nav-item" data-route="activity" href="#/activity">Activity</a>
+          <a class="nav-item" data-route="hospital" href="#/hospital">Hospital</a>
+          <a class="nav-item" data-route="memory" href="#/memory">Memory</a>
+        </nav>
+        <div class="sidebar-foot">
+          <p class="system-status" id="system-status">
+            <span class="status-dot" aria-hidden="true"></span>
+            System: ✓ Lucid running
+          </p>
+        </div>
+      </aside>
 
-      <main id="stage-admit" class="stage">
-        <article class="plate">
-          <p class="kicker">Patient</p>
-          <h1 id="patient-name"></h1>
-          <p class="role" id="patient-role"></p>
-          <dl>
-            <div>
-              <dt>Working on</dt>
-              <dd><code id="patient-file"></code></dd>
-            </div>
-            <div>
-              <dt>Complaint</dt>
-              <dd id="patient-complaint"></dd>
-            </div>
-          </dl>
-          <button class="action" id="admit-button" type="button">Admit agent</button>
-        </article>
-      </main>
-
-      <main id="stage-exam" class="stage" hidden>
-        <section class="scope">
-          <p class="kicker">Observe</p>
-          <h2>File-state scope</h2>
-          <ol id="turn-list" class="turns" aria-live="polite"></ol>
-          <p id="hash-chain" class="chain" hidden></p>
-        </section>
-
-        <section id="diagnose-block" class="plate" hidden>
-          <p class="flag">Loop detected</p>
-          <h2>Diagnosis</h2>
-          <dl class="facts">
-            <div>
-              <dt>Symptom</dt>
-              <dd id="symptom"></dd>
-            </div>
-            <div>
-              <dt>Evidence</dt>
-              <dd id="evidence"></dd>
-            </div>
-          </dl>
-        </section>
-
-        <section id="cause-block" class="plate" hidden>
-          <p class="kicker">Why?</p>
-          <h2>Root cause</h2>
-          <p class="headline" id="cause-title"></p>
-          <p id="cause-summary"></p>
-          <dl id="cause-instructions" class="facts"></dl>
-        </section>
-
-        <section id="treat-block" class="plate" hidden>
-          <p class="kicker">Treatment</p>
-          <h2>Prescribed change</h2>
-          <p class="note" id="treat-applied"></p>
-          <dl class="facts">
-            <div>
-              <dt>Treatment target</dt>
-              <dd id="treat-target"></dd>
-            </div>
-            <div>
-              <dt>Recommended change</dt>
-              <dd id="treat-change"></dd>
-            </div>
-            <div>
-              <dt>Current behavior</dt>
-              <dd id="treat-current"></dd>
-            </div>
-            <div>
-              <dt>Recommended instruction</dt>
-              <dd id="treat-instruction"></dd>
-            </div>
-            <div>
-              <dt>Why this should help</dt>
-              <dd id="treat-why"></dd>
-            </div>
-          </dl>
-          <button class="action" id="recheck-button" type="button">Recheck agent</button>
-        </section>
-      </main>
-
-      <main id="stage-outcome" class="stage" hidden>
-        <section class="scope">
-          <p class="kicker">Recheck</p>
-          <h2>Second run</h2>
-          <ol id="recheck-list" class="turns" aria-live="polite"></ol>
-          <p id="recheck-clear" class="flag flag--clear" hidden>Recheck passed. No repeated state detected.</p>
-        </section>
-
-        <section id="discharge-block" class="plate" hidden>
-          <p class="flag flag--clear">Discharged</p>
-          <dl id="discharge-summary" class="facts"></dl>
-          <p class="note">Afterimage will keep watching.</p>
-        </section>
-      </main>
-
-      <p id="error-notice" class="error" role="alert" hidden>
-        The visit could not load. Confirm the server is running, then admit again.
-      </p>
+      <div class="main">
+        <header class="topbar">
+          <p class="crumb" id="crumb">Agents</p>
+          <p class="topbar-note">Local · no accounts</p>
+        </header>
+        <main class="content" id="content" aria-live="polite"></main>
+      </div>
     </div>
+
+    <p id="boot-error" class="boot-error" role="alert" hidden>
+      Lucid could not load. Confirm <code>npm run web</code> is running on this machine.
+    </p>
   </body>
 </html>

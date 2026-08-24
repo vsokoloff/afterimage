@@ -45,7 +45,7 @@ function contextFromCase() {
 function cmdStatus(): void {
   const disease = getPrimaryDisease()
   console.log('Afterimage status')
-  console.log(`  mode:          local fixture (Auth Writer)`)
+  console.log(`  mode:          local fixture (Auth Agent)`)
   console.log(`  attached:      no (use attach — stub)`)
   console.log(`  department:    ${disease.department}`)
   console.log(`  disease:       ${disease.id} [${disease.status}]`)
@@ -141,7 +141,7 @@ function cmdStub(name: string): void {
   console.log(`${name}: not implemented yet.`)
   console.log('Afterimage is local-first; init/attach will write a config and')
   console.log('hook an agent runtime so the hospital can observe quietly.')
-  console.log('Until then, use the Auth Writer fixture via doctor / inspect / fix / recheck.')
+  console.log('Until then, use the Auth Agent fixture via doctor / inspect / fix / recheck.')
 }
 
 const command = process.argv[2] ?? 'help'

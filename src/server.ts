@@ -9,6 +9,13 @@ const staticFiles = new Map([
   ['/', { file: resolve(process.cwd(), 'web/index.html'), type: 'text/html; charset=utf-8' }],
   ['/styles.css', { file: resolve(process.cwd(), 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/app.js', { file: resolve(process.cwd(), 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
+  [
+    '/data/agents.js',
+    {
+      file: resolve(process.cwd(), 'web/data/agents.js'),
+      type: 'text/javascript; charset=utf-8',
+    },
+  ],
 ])
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
@@ -109,5 +116,5 @@ function isDirectRun(): boolean {
 
 if (isDirectRun()) {
   const { url } = await startServer()
-  console.log(`Afterimage medical record: ${url}`)
+  console.log(`Lucid command center: ${url}`)
 }

@@ -7,10 +7,10 @@ const stateD = 'def get_user(id): return db.find(id)'
 
 export const authWriterCase: VisitCase = {
   patient: {
-    name: 'Auth Writer',
-    role: 'Coding agent',
+    name: 'Auth Agent',
+    role: 'Authentication coding agent',
     file: 'auth.py',
-    complaint: 'Unable to complete authentication fix',
+    complaint: 'Unable to complete authentication fix — looping on file state',
   },
   symptom: 'Repeated file-state loop',
   attempts: [
