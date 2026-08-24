@@ -96,6 +96,26 @@ export type ErrorEvent = AgentEventBase & {
   code?: string
 }
 
+/** Subprocess wrapper observation (lucid run --). No agent internals claimed. */
+export type ProcessStartEvent = AgentEventBase & {
+  type: 'process_start'
+  command: string[]
+  cwd: string
+  pid?: number
+}
+
+export type ProcessOutputEvent = AgentEventBase & {
+  type: 'process_output'
+  stream: 'stdout' | 'stderr'
+  text: string
+}
+
+export type ProcessEndEvent = AgentEventBase & {
+  type: 'process_end'
+  exitCode: number | null
+  signal?: string | null
+}
+
 export type AgentEvent =
   | PromptEvent
   | ModelResponseEvent
@@ -104,6 +124,9 @@ export type AgentEvent =
   | FileWriteEvent
   | TestResultEvent
   | ErrorEvent
+  | ProcessStartEvent
+  | ProcessOutputEvent
+  | ProcessEndEvent
 
 export type AgentEventType = AgentEvent['type']
 

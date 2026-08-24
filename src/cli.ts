@@ -2,9 +2,6 @@
 /**
  * Thin local CLI for the Afterimage hospital.
  * Not a published global package yet — use `npm run lucid -- <cmd>`.
- *
- * Real today: status, doctor, inspect, fix, recheck, departments (fixture case).
- * Stubbed: init, attach.
  */
 import { authWriterCase } from './case.ts'
 import {
@@ -14,25 +11,30 @@ import {
 } from './departments/index.ts'
 import { printTrace } from './display.ts'
 import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
+import { parseRunArgv } from './runtime/parse.ts'
+import { runCommand } from './runtime/index.ts'
+import { openStore } from './store.ts'
 
-const USAGE = `Afterimage hospital (local)
+const USAGE = `Lucid hospital (local)
 
 Usage:
   npm run lucid -- <command>
 
 Commands:
-  init          Stub — create a local Afterimage config
-  attach        Stub — attach Afterimage to an agent runtime
-  status        Show fixture incident status
-  doctor        Run Looping → repeated-file-state on the fixture
-  inspect       Show evidence + diagnosis for the fixture
-  fix           Show prescribed treatment (review required)
-  recheck       Verify the post-treatment fixture trace
-  departments   List departments and disease status
+  run -- <cmd...>  Run a command under Lucid observation (persists a run)
+  init             Stub — create a local Lucid config
+  attach           Stub — attach Lucid to an agent runtime
+  status           Show fixture incident status
+  doctor           Run Looping → repeated-file-state on the fixture
+  inspect          Show evidence + diagnosis for the fixture
+  fix              Show prescribed treatment (review required)
+  recheck          Verify the post-treatment fixture trace
+  departments      List departments and disease status
+
+  npm run lucid -- run -- node -e "console.log('hi')"
 
 Today only Looping → repeated-file-state is shipped.
-Treatment means applying the change associated with the diagnosis
-(instructions, memory policy, tools, …) — not “ask AI to fix code.”
+Lucid run observes the subprocess only — not agent tool/model internals yet.
 `
 
 function contextFromCase() {
@@ -55,10 +57,40 @@ function fixtureAfter() {
   })
 }
 
+async function cmdRun(): Promise<number> {
+  const parsed = parseRunArgv(process.argv)
+  if (!parsed) {
+    console.error('Usage: npm run lucid -- run -- <command...>')
+    return 1
+  }
+
+  const store = await openStore()
+  const result = await runCommand({
+    store,
+    command: parsed.command,
+    cwd: process.cwd(),
+  })
+
+  console.log('Lucid run complete')
+  console.log(`  run id:    ${result.run.id}`)
+  console.log(`  status:    ${result.run.status}`)
+  console.log(`  events:    ${result.run.events.length}`)
+  console.log(`  cwd:       ${process.cwd()}`)
+  console.log(`  exit code: ${result.exitCode ?? '—'}`)
+  if (result.signal) console.log(`  signal:    ${result.signal}`)
+  if (result.incidentsOpened > 0) {
+    console.log(`  incidents: ${result.incidentsOpened} opened`)
+  }
+  console.log()
+  console.log('Agent internals (tool calls, model turns) are not observed in v1.')
+
+  return result.exitCode ?? 1
+}
+
 function cmdStatus(): void {
   const disease = getPrimaryDisease()
-  console.log('Afterimage status')
-  console.log(`  mode:          local fixture (Auth Agent)`)
+  console.log('Lucid status')
+  console.log(`  mode:          local`)
   console.log(`  attached:      no (use attach — stub)`)
   console.log(`  department:    ${disease.department}`)
   console.log(`  disease:       ${disease.id} [${disease.status}]`)
@@ -154,45 +186,51 @@ function cmdDepartments(): void {
 
 function cmdStub(name: string): void {
   console.log(`${name}: not implemented yet.`)
-  console.log('Afterimage is local-first; init/attach will write a config and')
+  console.log('Lucid is local-first; init/attach will write a config and')
   console.log('hook an agent runtime so the hospital can observe quietly.')
-  console.log('Until then, use the Auth Agent fixture via doctor / inspect / fix / recheck.')
 }
 
-const command = process.argv[2] ?? 'help'
+async function main(): Promise<void> {
+  const command = process.argv[2] ?? 'help'
 
-switch (command) {
-  case 'help':
-  case '--help':
-  case '-h':
-    console.log(USAGE)
-    break
-  case 'init':
-    cmdStub('init')
-    break
-  case 'attach':
-    cmdStub('attach')
-    break
-  case 'status':
-    cmdStatus()
-    break
-  case 'doctor':
-    cmdDoctor()
-    break
-  case 'inspect':
-    cmdInspect()
-    break
-  case 'fix':
-    cmdFix()
-    break
-  case 'recheck':
-    cmdRecheck()
-    break
-  case 'departments':
-    cmdDepartments()
-    break
-  default:
-    console.error(`Unknown command: ${command}`)
-    console.log(USAGE)
-    process.exitCode = 1
+  switch (command) {
+    case 'help':
+    case '--help':
+    case '-h':
+      console.log(USAGE)
+      break
+    case 'run':
+      process.exitCode = await cmdRun()
+      break
+    case 'init':
+      cmdStub('init')
+      break
+    case 'attach':
+      cmdStub('attach')
+      break
+    case 'status':
+      cmdStatus()
+      break
+    case 'doctor':
+      cmdDoctor()
+      break
+    case 'inspect':
+      cmdInspect()
+      break
+    case 'fix':
+      cmdFix()
+      break
+    case 'recheck':
+      cmdRecheck()
+      break
+    case 'departments':
+      cmdDepartments()
+      break
+    default:
+      console.error(`Unknown command: ${command}`)
+      console.log(USAGE)
+      process.exitCode = 1
+  }
 }
+
+void main()

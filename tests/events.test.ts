@@ -192,6 +192,9 @@ test('every event type carries id, runId, timestamp, and sequence', () => {
         'file_write',
         'test_result',
         'error',
+        'process_start',
+        'process_output',
+        'process_end',
       ].includes(event.type),
     )
   }
