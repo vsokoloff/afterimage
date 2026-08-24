@@ -21,6 +21,11 @@ import {
 import { recommendTreatmentFromDiagnosis, type StructuredTreatment } from './treatment/index.ts'
 import { extractReproductionFromRun } from './recheck/reproduction.ts'
 import type { RootCause } from './types.ts'
+import {
+  projectHospitalCare,
+  type HospitalCareTeam,
+  type HospitalLabTest,
+} from './hospital/index.ts'
 
 export type RunsListResponse = {
   runs: AgentRun[]
@@ -96,6 +101,8 @@ export type IncidentDetailResponse = {
   diagnosticWindowEvents: AgentEvent[]
   treatment: StructuredTreatment | null
   recheck: IncidentRecheck
+  careTeam: HospitalCareTeam | null
+  tests: HospitalLabTest[]
 }
 
 export type ApiContext = {
@@ -224,8 +231,16 @@ async function enrichIncident(
   diagnosticWindowEvents: AgentEvent[]
   treatment: StructuredTreatment | null
   recheck: IncidentRecheck
+  careTeam: HospitalCareTeam | null
+  tests: HospitalLabTest[]
 }> {
   if (!run || !incident.department || !incident.disease) {
+    const projection = projectHospitalCare({
+      incidentDepartment: incident.department,
+      diagnosisStatus: null,
+      rootCauseDiagnosis: null,
+      treatment: incident.treatment ?? null,
+    })
     return {
       incident,
       severity: 'unknown',
@@ -238,17 +253,25 @@ async function enrichIncident(
       rootCauseDiagnosis: null,
       rootCauseEvidenceEvents: [],
       diagnosticWindowEvents: [],
-      treatment: null,
+      treatment: incident.treatment ?? null,
       recheck: {
         available: false,
         passed: null,
         evidence: 'No linked run or detector metadata.',
       },
+      careTeam: projection.careTeam,
+      tests: projection.tests,
     }
   }
 
   const disease = getDisease(incident.department, incident.disease)
   if (!disease) {
+    const projection = projectHospitalCare({
+      incidentDepartment: incident.department,
+      diagnosisStatus: null,
+      rootCauseDiagnosis: null,
+      treatment: incident.treatment ?? null,
+    })
     return {
       incident,
       severity: 'unknown',
@@ -261,12 +284,14 @@ async function enrichIncident(
       rootCauseDiagnosis: null,
       rootCauseEvidenceEvents: [],
       diagnosticWindowEvents: [],
-      treatment: null,
+      treatment: incident.treatment ?? null,
       recheck: {
         available: false,
         passed: null,
         evidence: 'Unknown detector plugin.',
       },
+      careTeam: projection.careTeam,
+      tests: projection.tests,
     }
   }
 
@@ -305,6 +330,13 @@ async function enrichIncident(
     }
   }
 
+  const projection = projectHospitalCare({
+    incidentDepartment: currentIncident.department,
+    diagnosisStatus: diagnosis.status,
+    rootCauseDiagnosis,
+    treatment,
+  })
+
   return {
     incident: currentIncident,
     severity: diagnosis.status,
@@ -325,6 +357,8 @@ async function enrichIncident(
     diagnosticWindowEvents,
     treatment,
     recheck: buildRecheck(currentIncident, disease, run, diagnosis),
+    careTeam: projection.careTeam,
+    tests: projection.tests,
   }
 }
 
@@ -395,5 +429,7 @@ export async function fetchIncident(
     diagnosticWindowEvents: enriched.diagnosticWindowEvents,
     treatment: enriched.treatment,
     recheck: enriched.recheck,
+    careTeam: enriched.careTeam,
+    tests: enriched.tests,
   }
 }

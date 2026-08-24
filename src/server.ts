@@ -9,6 +9,7 @@ import { fetchWorkspace } from './workspace/index.ts'
 import { openStore, type LucidStore } from './store.ts'
 import { buildVisit } from './visit.ts'
 import { loadUmaMemory } from './uma/index.ts'
+import { listStaffForApi } from './hospital/index.ts'
 
 /** Lucid package root — web assets ship with the CLI, not the managed repository. */
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -114,6 +115,11 @@ export async function handleRequest(
 
     if (url.pathname === '/api/activity') {
       sendJson(response, 200, await fetchActivity(context.store))
+      return
+    }
+
+    if (url.pathname === '/api/hospital/staff') {
+      sendJson(response, 200, { staff: listStaffForApi() })
       return
     }
 

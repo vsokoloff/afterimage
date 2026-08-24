@@ -181,6 +181,34 @@ test('GET /api/incidents/:id returns enriched incident detail', async () => {
 
     assert.ok(body.recheck)
     assert.equal(typeof body.recheck.available, 'boolean')
+
+    assert.ok(body.careTeam)
+    assert.equal(body.careTeam.specialist.id, 'specialist-looping')
+    assert.match(body.careTeam.assignedSummary, /Chief Doctor → Loop Doctor/)
+    assert.ok(Array.isArray(body.tests))
+    assert.ok(body.tests.some((test: { departmentId: string; result: string }) => test.departmentId === 'looping' && test.result === 'warn'))
+  })
+})
+
+test('GET /api/hospital/staff returns built-in staff only', async () => {
+  await withServer(async (url) => {
+    const response = await fetch(`${url}/api/hospital/staff`)
+    assert.equal(response.status, 200)
+    const body = await response.json()
+    assert.ok(Array.isArray(body.staff))
+    assert.ok(body.staff.some((member: { id: string }) => member.id === 'chief'))
+    assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-looping' && member.status === 'on_duty'))
+    assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-memory' && member.status === 'stub'))
+    assert.ok(
+      body.staff.every(
+        (member: { name: string; id: string }) =>
+          !['Uma', 'Gitty'].includes(member.name) && member.id !== 'uma' && member.id !== 'subprocess',
+      ),
+    )
+
+    const agents = await (await fetch(`${url}/api/agents`)).json()
+    assert.ok(Array.isArray(agents.agents))
+    assert.ok(agents.agents.every((agent: { id: string }) => !String(agent.id).startsWith('specialist-')))
   })
 })
 
@@ -213,6 +241,8 @@ test('GET /api/incidents/:id returns root-cause diagnosis with cited evidence', 
     assert.equal(body.incident.treatment.target, 'instructions')
     assert.equal(body.treatment.requiresReview, true)
     assert.equal(body.treatment.safeToAutoApply, false)
+    assert.equal(body.careTeam.treatmentOwner.id, 'specialist-instructions')
+    assert.equal(body.careTeam.specialist.id, 'specialist-looping')
   }, { rich: true })
 })
 

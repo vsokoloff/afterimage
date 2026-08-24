@@ -4,6 +4,17 @@ Afterimage (product surface: **Lucid**) is a **local incidents + Hospital** tool
 
 The website starts on **open incidents** and opens Hospital diagnostics directly. Detection and treatment live in the terminal / department plugins.
 
+## Patients vs hospital staff
+
+Lucid has two agent kinds — do not mix them:
+
+| Kind | Where | Examples | UI |
+|------|-------|----------|-----|
+| **Workspace agents (patients)** | Repo `.lucid/` + runs | Uma, Gitty, Auth | Your agents |
+| **Hospital staff** | Lucid package `src/hospital/staff/` | Intake, Lab, Chief, Loop Doctor, Recheck Nurse | Hospital staff roster |
+
+Staff diagnose and treat patients. Patients never appear in the staff list; staff never appear in Your agents. Details: [docs/hospital-staff.md](docs/hospital-staff.md).
+
 ## Local-first
 
 - Runs on your machine (`127.0.0.1`).
@@ -122,3 +133,4 @@ Use `npm run lucid -- <cmd>` (not a published global package yet).
 2. Export `DiseasePlugin` with `status: 'shipped'` when end-to-end.
 3. Register in the department index + hospital registry.
 4. Add tests; keep Auth Agent visit working unless intentionally replaced.
+5. Shipping a disease in a department automatically marks that department’s **specialist doctor** as on duty in the Hospital staff roster.

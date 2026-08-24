@@ -66,7 +66,7 @@ Run options:
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
-Gitty remembers: "gitty push" always means commit + explain + push + PR care.
+Gitty remembers: whenever the codebase changes, commit + explain + push + PR care (same as "gitty push").
 Uma remembers: how you want each part of the UI to look and feel.
 `
 
@@ -255,7 +255,7 @@ async function cmdGitty(): Promise<number> {
     console.log('  npm run lucid -- gitty push --message "why this change"')
     console.log('  npm run lucid -- gitty push --dry-run')
     console.log()
-    console.log('Remembered habit: push = commit + explain + push + take care of PRs.')
+    console.log('Remembered habit: after code changes (and on "gitty push"), commit + explain + push + take care of PRs.')
     return 0
   }
 

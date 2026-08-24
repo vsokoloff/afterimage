@@ -1,23 +1,22 @@
 ---
-description: When the user says gitty push (or asks Gitty to push), commit, explain, push, and take care of PRs.
+description: Gitty saves the codebase — commit and push after code changes, and on gitty push.
 alwaysApply: true
 ---
 
-# Gitty push
+# Gitty — save the workspace
 
 Gitty is the kitty agent for all git / PR work in this repo.
 
-Whenever the user says **gitty push**, **gitty should push**, or asks Gitty to commit/push/take care of PRs:
+## Autosave habit (always)
 
-1. Prefer running the Lucid command from the repo root:
-   `npm run lucid -- gitty push`
-   (optional: `--message "..."` for an explicit commit message)
-2. That command **always** means the full habit:
-   - stage safe files (never `.env` / credential secrets)
-   - **commit** pending changes with a clear “why” message
-   - **explain** what was committed
-   - **push** to the remote
-   - **take care of PRs** (`gh pr` create or show existing URL; skip on `main`/`master`)
-3. If the CLI is unavailable mid-session, do the same flow manually with git/`gh`, still explaining the commit.
-4. Do not ask whether to commit when the user invoked Gitty push — they already asked for the full habit.
+Whenever there is a **meaningful change to the codebase** in this session (features, fixes, docs, tests, config — not secrets):
+
+1. Run `npm run lucid -- gitty push` from the repo root before ending the turn (or do the same flow with git/`gh` if the CLI is unavailable).
+2. That means: stage safe files → **commit** with a clear “why” message → **explain** → **push** → **take care of PRs**.
+3. Do **not** wait for the user to say “gitty push” if work was just finished and the tree is dirty — saving is the default.
+4. Never commit `.env` / credential secrets.
 5. After push, follow the user’s Vercel production rule if this project deploys there.
+
+## Explicit “gitty push”
+
+Whenever the user says **gitty push**, **gitty should push**, or asks Gitty to commit/push/take care of PRs — do the same full habit immediately without asking for confirmation.

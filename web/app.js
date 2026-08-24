@@ -542,13 +542,101 @@ function agentLink(agentId, label) {
 
 /* ─── Hospital ─── */
 
+function staffStatusLabel(status) {
+  return status === 'on_duty' ? 'On duty' : 'Not on duty yet'
+}
+
+function renderStaffCard(member) {
+  const item = el('li', `staff-card staff-card--${member.status}`)
+  item.append(
+    el('h3', 'staff-card-name', member.name),
+    el('p', 'staff-card-duty', member.duty),
+    el(
+      'span',
+      `staff-card-status staff-card-status--${member.status}`,
+      member.status === 'stub'
+        ? 'Not on duty yet — contribute a disease plugin'
+        : staffStatusLabel(member.status),
+    ),
+  )
+  return item
+}
+
+function labResultMark(result) {
+  if (result === 'pass') return '✓'
+  if (result === 'warn' || result === 'fail') return '⚠'
+  return '·'
+}
+
+function renderPatientCarePanel(detail, short) {
+  const { careTeam, tests, rootCauseDiagnosis, treatment, diagnosis } = detail
+  const chart = el('section', 'care-chart')
+  chart.append(el('h2', 'care-chart-title', `Patient: ${short}`))
+
+  if (careTeam) {
+    const assigned = el('div', 'care-assigned')
+    assigned.append(
+      el('h3', 'care-label', 'Assigned'),
+      el('p', 'care-assigned-path', careTeam.assignedSummary),
+    )
+    chart.append(assigned)
+  }
+
+  if (Array.isArray(tests) && tests.length) {
+    const testsBlock = el('div', 'care-tests')
+    testsBlock.append(el('h3', 'care-label', 'Tests'))
+    const list = el('ul', 'care-test-list')
+    for (const test of tests) {
+      const row = el('li', `care-test care-test--${test.result}`)
+      row.append(
+        el('span', 'care-test-mark', labResultMark(test.result)),
+        el('span', '', test.label),
+      )
+      list.append(row)
+    }
+    testsBlock.append(list)
+    chart.append(testsBlock)
+  }
+
+  const diagnosisBox = el('div', 'care-diagnosis')
+  diagnosisBox.append(
+    el('h3', 'care-label', 'Diagnosis'),
+    el(
+      'p',
+      'story-copy',
+      rootCauseDiagnosis?.title ||
+        rootCauseDiagnosis?.explanation ||
+        diagnosis?.symptom ||
+        'Waiting on Chief Doctor.',
+    ),
+  )
+  chart.append(diagnosisBox)
+
+  const treatmentBox = el('div', 'care-treatment')
+  const owner = careTeam?.treatmentOwner?.name || careTeam?.treatment?.name || 'Treatment Agent'
+  treatmentBox.append(
+    el('h3', 'care-label', 'Treatment'),
+    el(
+      'p',
+      'story-copy',
+      treatment
+        ? `${owner} — ${treatment.proposedChange || treatment.rationale || treatment.target}`
+        : `${owner} — no treatment recommended yet.`,
+    ),
+  )
+  chart.append(treatmentBox)
+
+  return chart
+}
+
 async function renderHospitalPage() {
   crumb.textContent = 'Hospital'
   content.replaceChildren(el('p', 'activity-line', 'Loading…'))
 
-  const [incidentsData, agentsData] = await Promise.all([
+  const [incidentsData, agentsData, staffData] = await Promise.all([
     fetchJson('/api/incidents'),
     fetchJson('/api/agents'),
+    fetchJson('/api/hospital/staff'),
   ])
   cacheAgentNames(agentsData.agents)
   content.replaceChildren()
@@ -556,25 +644,46 @@ async function renderHospitalPage() {
   const head = el('div', 'page-head hospital-head')
   head.append(
     el('h1', '', 'Hospital'),
-    el('p', '', 'Who needs help right now — and how we can help them.'),
+    el(
+      'p',
+      '',
+      'Lucid staff diagnose and treat your workspace agents. Staff ship with Lucid; patients are yours.',
+    ),
   )
   content.append(head)
+
+  const staffSection = el('section', 'hospital-staff')
+  staffSection.append(
+    el('h2', 'incident-group-title', 'Lucid Hospital staff'),
+    el(
+      'p',
+      'hospital-staff-note',
+      'Permanent doctors and nurses. They are not your project agents.',
+    ),
+  )
+  const staffList = el('ul', 'staff-grid')
+  for (const member of staffData.staff ?? []) {
+    staffList.append(renderStaffCard(member))
+  }
+  staffSection.append(staffList)
+  content.append(staffSection)
 
   const open = incidentsData.incidents.filter((incident) =>
     ['open', 'in_hospital'].includes(incident.status),
   )
 
+  const patients = el('section', 'hospital-patients')
+  patients.append(el('h2', 'incident-group-title', 'Patients'))
   if (!open.length) {
-    content.append(emptyState('Nobody needs help right now. Nice!'))
-    return
+    patients.append(emptyState('Nobody needs help right now. Nice!'))
+  } else {
+    const list = el('div', 'incident-list')
+    for (const incident of open) {
+      list.append(renderHelpCard(incident, agentsData.agents))
+    }
+    patients.append(list)
   }
-
-  const list = el('div', 'incident-list')
-  list.append(el('h2', 'incident-group-title', 'Who needs help?'))
-  for (const incident of open) {
-    list.append(renderHelpCard(incident, agentsData.agents))
-  }
-  content.append(list)
+  content.append(patients)
 }
 
 function renderHelpCard(incident, agents) {
@@ -779,6 +888,8 @@ async function renderIncidentDetail(incidentId) {
     hashChain,
     fileStates,
     evidence,
+    careTeam,
+    tests,
   } = detail
 
   const agentName =
@@ -790,7 +901,7 @@ async function renderIncidentDetail(incidentId) {
   crumb.textContent = `Hospital / ${short}`
 
   const head = el('div', 'page-head hospital-head')
-  head.append(el('h1', '', `🏥 ${short} is in the Hospital`))
+  head.append(el('h1', '', `${short} is in the Hospital`))
   head.append(incidentStatusBadge(incident.status, detail.severity))
 
   const actions = el('div', 'actions')
@@ -812,6 +923,7 @@ async function renderIncidentDetail(incidentId) {
   content.append(head)
 
   const layout = el('div', 'incident-detail incident-detail--story')
+  layout.append(renderPatientCarePanel({ careTeam, tests, rootCauseDiagnosis, treatment, diagnosis }, short))
 
   const happened = document.createElement('div')
   happened.append(el('p', 'story-copy', symptomLine(incident, short)))

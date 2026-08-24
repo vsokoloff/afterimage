@@ -29,13 +29,14 @@ describe('gitty argv', () => {
 })
 
 describe('gitty habits', () => {
-  it('remembers push = commit + explain + push + pr', () => {
+  it('remembers push = commit + explain + push + pr + autosave', () => {
     const habits = defaultGittyHabits(new Date('2026-08-24T00:00:00.000Z'))
     assert.equal(habits.push.commit, true)
     assert.equal(habits.push.explain, true)
     assert.equal(habits.push.push, true)
     assert.equal(habits.push.pr, true)
-    assert.match(habits.push.note, /gitty push/i)
+    assert.equal(habits.push.autosaveOnChange, true)
+    assert.match(habits.push.note, /codebase changes/i)
   })
 })
 

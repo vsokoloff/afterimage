@@ -4,20 +4,22 @@ import path from 'node:path'
 
 import type { LucidStore } from '../store.ts'
 
-/** Remembered Gitty habits — `push` always means commit + explain + push + PR care. */
+/** Remembered Gitty habits — save the workspace whenever code changes. */
 export type GittyHabits = {
   push: {
     commit: true
     explain: true
     push: true
     pr: true
+    /** After meaningful code changes, commit + push without waiting to be asked. */
+    autosaveOnChange: true
     rememberedAt: string
     note: string
   }
 }
 
 const DEFAULT_PUSH_NOTE =
-  'When the user says "gitty push", always: commit pending work, explain the commit, push, and take care of any PRs.'
+  'Whenever the codebase changes, Gitty commits and pushes (and takes care of PRs) so work is saved. Saying "gitty push" does the same full habit immediately.'
 
 export function defaultGittyHabits(now = new Date()): GittyHabits {
   return {
@@ -26,6 +28,7 @@ export function defaultGittyHabits(now = new Date()): GittyHabits {
       explain: true,
       push: true,
       pr: true,
+      autosaveOnChange: true,
       rememberedAt: now.toISOString(),
       note: DEFAULT_PUSH_NOTE,
     },
@@ -58,6 +61,7 @@ export async function loadGittyHabits(store: LucidStore): Promise<GittyHabits> {
         explain: true,
         push: true,
         pr: true,
+        autosaveOnChange: true,
         rememberedAt: parsed.push.rememberedAt ?? new Date().toISOString(),
         note: parsed.push.note ?? DEFAULT_PUSH_NOTE,
       },
@@ -67,7 +71,7 @@ export async function loadGittyHabits(store: LucidStore): Promise<GittyHabits> {
   }
 }
 
-/** Persist that `gitty push` = commit + explain + push + PR care. */
+/** Persist Gitty’s save habit under `.lucid/gitty.json`. */
 export async function rememberGittyPush(store: LucidStore): Promise<GittyHabits> {
   const habits = defaultGittyHabits()
   await mkdir(store.root, { recursive: true })
