@@ -17,6 +17,10 @@ const staticFiles = new Map([
   ['/styles.css', { file: resolve(PACKAGE_ROOT, 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/app.js', { file: resolve(PACKAGE_ROOT, 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
   ['/characters.js', { file: resolve(PACKAGE_ROOT, 'web/characters.js'), type: 'text/javascript; charset=utf-8' }],
+  [
+    '/plain-english.js',
+    { file: resolve(PACKAGE_ROOT, 'web/plain-english.js'), type: 'text/javascript; charset=utf-8' },
+  ],
 ])
 
 export type ServerContext = {

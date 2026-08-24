@@ -53,28 +53,57 @@ function isOpenIncident(incident: Incident): boolean {
   return incident.status === 'open' || incident.status === 'in_hospital'
 }
 
+function basename(filePath: string): string {
+  const parts = filePath.split(/[/\\]/)
+  return parts[parts.length - 1] || filePath
+}
+
+/** Display-only activity labels derived from real events (kid-friendly tone). */
 function summarizeEvent(event: AgentEvent): string {
   switch (event.type) {
-    case 'prompt':
-      return `${event.role ?? 'prompt'}: ${truncate(event.text, 120)}`
-    case 'model_response':
-      return truncate(event.reasonSummary || event.text, 120) || 'Model response'
-    case 'tool_call':
-      return `Tool call ${event.toolName}`
-    case 'tool_result':
-      return `Tool ${event.toolName} ${event.ok ? 'ok' : 'failed'}`
+    case 'prompt': {
+      const text = truncate(event.text, 100)
+      return event.role === 'user' || !event.role ? `Got a job: ${text}` : `Got instructions: ${text}`
+    }
+    case 'model_response': {
+      const text = truncate(event.reasonSummary || event.text, 100)
+      return text ? `Thought about it: ${text}` : 'Thought about what to do'
+    }
+    case 'tool_call': {
+      const name = event.toolName.toLowerCase()
+      const args = event.arguments as { path?: string; file_path?: string } | undefined
+      const path = args?.path ?? args?.file_path
+      if (name === 'read' || name === 'readfile') {
+        return path ? `Opened ${basename(path)}` : 'Opened a file'
+      }
+      if (name === 'write' || name === 'writefile' || name === 'strreplace') {
+        return path ? `Changed ${basename(path)}` : 'Changed a file'
+      }
+      if (name === 'shell') return 'Ran a command'
+      return `Used ${event.toolName}`
+    }
+    case 'tool_result': {
+      const name = event.toolName.toLowerCase()
+      if (name === 'shell') return event.ok ? 'Finished a command' : 'A command did not work'
+      return event.ok ? `Finished using ${event.toolName}` : `${event.toolName} did not work`
+    }
     case 'file_write':
-      return `Wrote ${event.path}`
+      return `Changed ${basename(event.path)}`
     case 'test_result':
-      return `${event.name ?? 'test'} ${event.passed ? 'passed' : 'failed'}`
+      return event.passed ? 'The check passed' : 'The check failed'
     case 'error':
-      return event.message
-    case 'process_start':
-      return `Running ${event.command.join(' ')}`
+      return truncate(event.message, 120)
+    case 'process_start': {
+      const cmd = event.command.join(' ')
+      if (/\b(test|vitest|jest|pytest)\b/i.test(cmd)) return 'Checked if the change worked'
+      return cmd ? truncate(`Started work: ${cmd}`, 100) : 'Started work'
+    }
     case 'process_output':
-      return `${event.stream}: ${truncate(event.text, 80)}`
+      return event.stream === 'stderr'
+        ? truncate(`Got a warning: ${event.text}`, 100)
+        : truncate(`Saw output: ${event.text}`, 100)
     case 'process_end':
-      return `Process exited ${event.exitCode ?? event.signal ?? '—'}`
+      return event.exitCode === 0 ? 'Finished this work' : 'This work did not finish cleanly'
     default: {
       const unknown = event as AgentEvent
       return unknown.type

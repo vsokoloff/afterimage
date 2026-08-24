@@ -19,13 +19,14 @@ test('visit response keeps detector and case data separate', () => {
   assert.equal(visit.verification.passed, true)
 })
 
-test('serves command center UI backed by real agent and incident APIs', async () => {
+test('serves kid-friendly agent UI backed by real agent and incident APIs', async () => {
   const { url, server } = await startServer({ port: 0 })
   try {
     const page = await fetch(url)
     const html = await page.text()
     assert.equal(page.status, 200)
-    assert.match(html, /Lucid — Agent Command Center/)
+    assert.match(html, /Lucid — Your agents/)
+    assert.match(html, /Your agents/)
     assert.match(html, /#\/agents/)
     assert.match(html, /#\/activity/)
     assert.match(html, /#\/incidents/)
@@ -42,9 +43,15 @@ test('serves command center UI backed by real agent and incident APIs', async ()
     assert.match(appSource, /workspace-label/)
     assert.match(appSource, /renderAgentsPage/)
     assert.match(appSource, /renderHospitalPage/)
-    assert.match(appSource, /characters\.js/)
+    assert.match(appSource, /plain-english\.js/)
+    assert.match(appSource, /speechBubble/)
+    assert.match(appSource, /Technical details/)
+    assert.match(appSource, /What I'm doing/)
     assert.doesNotMatch(appSource, /healthScore/)
     assert.doesNotMatch(appSource, /\/api\/visit/)
+
+    const plainEnglish = await fetch(`${url}/plain-english.js`)
+    assert.equal(plainEnglish.status, 200)
 
     const characters = await fetch(`${url}/characters.js`)
     assert.equal(characters.status, 200)

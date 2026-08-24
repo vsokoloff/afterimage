@@ -1,4 +1,17 @@
 import { agentCharacter, moodForStatus } from './characters.js'
+import {
+  describeEvent,
+  firstName,
+  helpLine,
+  howImDoingLine,
+  relativeWorked,
+  speechBubble,
+  statusBadgeClass,
+  statusEmoji,
+  statusLabel,
+  symptomLine,
+  whyLine,
+} from './plain-english.js'
 
 const content = document.querySelector('#content')
 const crumb = document.querySelector('#crumb')
@@ -7,6 +20,8 @@ const bootError = document.querySelector('#boot-error')
 const nav = document.querySelector('#nav')
 
 let cachedWorkspace = null
+/** @type {Map<string, string>} */
+const agentNameCache = new Map()
 
 async function loadWorkspace() {
   if (cachedWorkspace) return cachedWorkspace
@@ -72,14 +87,18 @@ function formatTime(iso) {
   }
 }
 
-function formatDuration(ms) {
-  if (ms == null) return '—'
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ${minutes % 60}m`
+function dayLabel(iso) {
+  try {
+    const date = new Date(iso)
+    const today = new Date()
+    const yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+    if (date.toDateString() === today.toDateString()) return 'Today'
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date)
+  } catch {
+    return iso
+  }
 }
 
 async function fetchJson(url) {
@@ -100,15 +119,28 @@ function facts(rows) {
   return dl
 }
 
-function section(title, body) {
-  const wrap = el('section', 'record-section')
-  wrap.append(el('h2', 'record-section-title', title))
+function storySection(title, body) {
+  const wrap = el('section', 'story-section')
+  wrap.append(el('h2', 'story-section-title', title))
   if (typeof body === 'string') {
-    wrap.append(el('p', 'record-copy', body))
+    wrap.append(el('p', 'story-copy', body))
   } else {
     wrap.append(body)
   }
   return wrap
+}
+
+function techDetails(summary, body) {
+  const details = document.createElement('details')
+  details.className = 'tech-details'
+  const sum = el('summary', '', summary)
+  details.append(sum)
+  if (typeof body === 'string') {
+    details.append(el('p', 'record-copy', body))
+  } else {
+    details.append(body)
+  }
+  return details
 }
 
 function emptyState(message) {
@@ -116,33 +148,20 @@ function emptyState(message) {
 }
 
 function agentStatusBadge(status) {
-  const label =
-    {
-      working: 'Working',
-      idle: 'Idle',
-      unhealthy: 'Unhealthy',
-      stopped: 'Stopped',
-    }[status] ?? status
-  const cls =
-    {
-      working: 'badge badge--working',
-      idle: 'badge badge--idle',
-      unhealthy: 'badge badge--critical',
-      stopped: 'badge badge--stopped',
-    }[status] ?? 'badge'
-  return el('span', cls, label)
+  const badge = el('span', statusBadgeClass(status), `${statusEmoji(status)} ${statusLabel(status)}`)
+  return badge
 }
 
 function incidentStatusBadge(status, severity) {
   const label =
     {
-      open: 'Open',
-      in_hospital: 'In hospital',
-      cleared: 'Cleared',
+      open: 'Needs help',
+      in_hospital: 'In Hospital',
+      cleared: 'All better',
       closed: 'Closed',
     }[status] ?? status
   const cls =
-    severity === 'critical'
+    severity === 'critical' || status === 'open' || status === 'in_hospital'
       ? 'badge badge--critical'
       : status === 'cleared' || status === 'closed'
         ? 'badge badge--cleared'
@@ -156,78 +175,106 @@ function mascotForAgent(agent, size = 'md') {
   return agentCharacter(characterId, { size, mood, title: agent.name })
 }
 
-function agentLink(agentId, label) {
-  const link = el('a', 'link-agent', label)
-  link.href = `#/agents/${encodeURIComponent(agentId)}`
-  return link
+function speechEl(text) {
+  const bubble = el('blockquote', 'speech-bubble', text)
+  return bubble
 }
 
-/* ─── Agents ─── */
+function cacheAgentNames(agents) {
+  for (const agent of agents) {
+    agentNameCache.set(agent.id, agent.name)
+  }
+}
+
+function displayAgentName(agentId) {
+  return agentNameCache.get(agentId) ?? agentId
+}
+
+function runTitle(run) {
+  const prompt = [...(run.events ?? [])]
+    .reverse()
+    .find((event) => event.type === 'prompt' && (event.role === 'user' || !event.role))
+  if (prompt?.text) {
+    const t = prompt.text.trim()
+    return t.length > 72 ? `${t.slice(0, 71)}…` : t
+  }
+  if (run.status === 'running') return 'Working now'
+  if (run.status === 'failed') return 'Work that needed help'
+  if (run.status === 'cancelled') return 'Work that stopped'
+  return 'Finished some work'
+}
+
+/* ─── Your agents ─── */
 
 function renderAgentCard(agent) {
-  const card = el('button', 'agent-card', '')
+  const card = el('button', 'agent-card agent-card--story', '')
   card.type = 'button'
   card.addEventListener('click', () => {
     location.hash = `#/agents/${encodeURIComponent(agent.id)}`
   })
 
-  const top = el('div', 'agent-card-top')
-  const identity = el('div', 'agent-card-identity')
-  identity.append(mascotForAgent(agent, 'sm'))
-  const copy = document.createElement('div')
-  copy.append(el('h2', '', agent.name), el('p', 'role', agent.role ?? agent.runtime))
-  identity.append(copy)
-  top.append(identity, agentStatusBadge(agent.status))
-  card.append(top)
+  const portrait = el('div', 'agent-card-portrait')
+  portrait.append(mascotForAgent(agent, 'md'))
+  card.append(portrait)
 
-  if (agent.currentActivity) {
-    card.append(el('p', 'activity-line', agent.currentActivity))
-  } else if (agent.status === 'idle') {
-    card.append(el('p', 'activity-line muted', 'No active task'))
-  } else if (agent.status === 'stopped') {
-    card.append(el('p', 'activity-line muted', 'Last run stopped'))
+  card.append(el('h2', 'agent-card-name', agent.name))
+  if (agent.role) {
+    card.append(el('p', 'role', agent.role))
   }
 
-  const meta = el('div', 'meta-row')
-  meta.append(el('span', 'chip', agent.runtime))
-  if (agent.currentRunDurationMs != null) {
-    meta.append(el('span', 'chip', formatDuration(agent.currentRunDurationMs)))
+  card.append(speechEl(speechBubble(agent)))
+
+  const statusRow = el('div', 'agent-card-status')
+  statusRow.append(agentStatusBadge(agent.status))
+  const when = relativeWorked(agent)
+  if (when) {
+    statusRow.append(el('span', 'agent-card-when', when))
   }
-  if (agent.openIncidentCount > 0) {
-    meta.append(el('span', 'chip chip--fault', `${agent.openIncidentCount} incident`))
+  card.append(statusRow)
+
+  if (agent.status === 'unhealthy') {
+    card.append(
+      el(
+        'p',
+        'agent-card-symptom',
+        agent.primaryOpenIncidentId
+          ? `${firstName(agent)} needs help.`
+          : `${firstName(agent)} needs help.`,
+      ),
+    )
+  } else if (agent.status === 'working') {
+    card.append(el('p', 'agent-card-ok', 'Everything looks good ✓'))
   }
-  card.append(meta)
 
   const actions = el('div', 'card-actions')
-  actions.append(el('span', 'btn btn-ghost', 'Open profile'))
+  const cta =
+    agent.status === 'unhealthy'
+      ? `See what's wrong`
+      : `See what ${firstName(agent)} is doing`
+  actions.append(el('span', 'btn btn-ghost', cta))
   card.append(actions)
   return card
 }
 
 async function renderAgentsPage() {
-  const workspace = await loadWorkspace()
-  renderWorkspaceBanner(workspace.workspace)
-  crumb.textContent = 'Agents'
-  content.replaceChildren(el('p', 'activity-line', 'Loading agents…'))
+  crumb.textContent = 'Your agents'
+  content.replaceChildren(el('p', 'activity-line', 'Loading your agents…'))
 
   const data = await fetchJson('/api/agents')
+  cacheAgentNames(data.agents)
   content.replaceChildren()
 
   const head = el('div', 'page-head')
   head.append(
-    el('h1', '', 'Agents'),
-    el(
-      'p',
-      '',
-      'Manage connected agents from persisted runs. Status and activity are derived from real observation — never invented.',
-    ),
+    el('h1', '', 'Your agents'),
+    el('p', '', 'Your little team in this workspace. Who they are, what they’re doing, and if they’re okay.'),
   )
   content.append(head)
 
   if (!data.agents.length) {
     content.append(
       emptyState(
-        'No agents observed yet. Run a command with Lucid (`npm run lucid -- run -- …`) or attach a Codex stream.',
+        'No agents here yet. When someone works in this repo with Lucid watching, they’ll show up.',
       ),
     )
     return
@@ -236,8 +283,8 @@ async function renderAgentsPage() {
   const toolbar = el('div', 'toolbar')
   const search = document.createElement('input')
   search.type = 'search'
-  search.placeholder = 'Search agents…'
-  search.setAttribute('aria-label', 'Search agents')
+  search.placeholder = 'Find an agent…'
+  search.setAttribute('aria-label', 'Find an agent')
   toolbar.append(search)
   content.append(toolbar)
 
@@ -250,8 +297,7 @@ async function renderAgentsPage() {
       return (
         agent.name.toLowerCase().includes(q) ||
         agent.id.toLowerCase().includes(q) ||
-        (agent.role ?? '').toLowerCase().includes(q) ||
-        agent.runtime.toLowerCase().includes(q)
+        (agent.role ?? '').toLowerCase().includes(q)
       )
     })
     for (const agent of list) {
@@ -265,165 +311,186 @@ async function renderAgentsPage() {
 }
 
 async function renderAgentProfile(agentId) {
-  crumb.textContent = 'Agents / …'
-  content.replaceChildren(el('p', 'activity-line', 'Loading agent…'))
+  crumb.textContent = 'Your agents / …'
+  content.replaceChildren(el('p', 'activity-line', 'Loading…'))
 
   const profile = await fetchJson(`/api/agents/${encodeURIComponent(agentId)}`)
   const { agent, currentRun, recentRuns, recentEvents, openIncidents, pastIncidents } = profile
+  agentNameCache.set(agent.id, agent.name)
 
   content.replaceChildren()
-  crumb.textContent = `Agents / ${agent.name}`
+  crumb.textContent = `Your agents / ${agent.name}`
 
-  const layout = el('div', 'profile')
-  const hero = el('div', 'profile-hero')
-  const heroMain = el('div', 'profile-hero-main')
-  heroMain.append(mascotForAgent(agent, 'lg'))
-  const heroCopy = document.createElement('div')
-  heroCopy.append(
-    el('h1', '', agent.name),
-    el('p', 'role', agent.role ?? 'Observed agent'),
-    el('p', 'activity-line', `${agent.runtime} · ${agent.runCount} run${agent.runCount === 1 ? '' : 's'}`),
-  )
-  const badges = el('div', 'meta-row')
-  badges.append(agentStatusBadge(agent.status))
-  if (agent.openIncidentCount > 0) {
-    badges.append(el('span', 'chip chip--fault', `${agent.openIncidentCount} open incident`))
-  }
-  heroCopy.append(badges)
-  heroMain.append(heroCopy)
-  hero.append(heroMain)
+  const layout = el('div', 'profile profile--story')
 
-  const actions = el('div', 'actions')
-  const back = el('button', 'btn', '← Agents')
+  const back = el('button', 'btn', '← Your agents')
   back.type = 'button'
   back.addEventListener('click', () => {
     location.hash = '#/agents'
   })
-  actions.append(back)
-  hero.append(actions)
+  layout.append(back)
+
+  const hero = el('div', 'profile-hero profile-hero--story')
+  hero.append(mascotForAgent(agent, 'lg'))
+  hero.append(el('h1', '', agent.name))
+  if (agent.role) hero.append(el('p', 'role', agent.role))
+  hero.append(agentStatusBadge(agent.status))
   layout.append(hero)
 
-  if (openIncidents.length > 0) {
+  const needsHelp = agent.status === 'unhealthy' || openIncidents.length > 0
+  if (needsHelp) {
     const alert = el('div', 'medical-banner')
+    const incident = openIncidents[0]
     alert.append(
-      el('p', 'medical-banner-title', 'Needs medical attention'),
+      el('p', 'medical-banner-title', `${statusEmoji('unhealthy')} Needs help`),
       el(
         'p',
         'medical-banner-copy',
-        `${openIncidents.length} unresolved incident${openIncidents.length === 1 ? '' : 's'} require Hospital diagnostics.`,
+        incident
+          ? symptomLine(incident, firstName(agent))
+          : `${firstName(agent)} needs help.`,
       ),
     )
-    const hospitalBtn = el('button', 'btn btn-primary', 'View in Hospital')
-    hospitalBtn.type = 'button'
-    hospitalBtn.addEventListener('click', () => {
-      location.hash = `#/incidents/${openIncidents[0].id}`
-    })
-    alert.append(hospitalBtn)
+    if (incident) {
+      const hospitalBtn = el(
+        'button',
+        'btn btn-primary',
+        `Take ${firstName(agent)} to Hospital`,
+      )
+      hospitalBtn.type = 'button'
+      hospitalBtn.addEventListener('click', () => {
+        location.hash = `#/incidents/${incident.id}`
+      })
+      alert.append(hospitalBtn)
+    }
     layout.append(alert)
   }
 
+  const doingBody = document.createElement('div')
+  doingBody.append(speechEl(speechBubble(agent, recentEvents)))
+  if (agent.status === 'working' && agent.currentRunStartedAt) {
+    doingBody.append(
+      el(
+        'p',
+        'story-meta',
+        `Started ${formatTime(agent.currentRunStartedAt)}${
+          agent.currentRunDurationMs != null
+            ? ` · ${relativeWorked(agent) ?? ''}`
+            : ''
+        }`,
+      ),
+    )
+  } else if (relativeWorked(agent)) {
+    doingBody.append(el('p', 'story-meta', relativeWorked(agent)))
+  }
+  layout.append(storySection("What I'm doing", doingBody))
+
+  const doneEvents = recentEvents.slice(0, 12)
   layout.append(
-    section(
-      'Current status',
-      facts([
-        ['Status', agent.status],
-        ['Runtime', agent.runtime],
-        ['Current activity', agent.currentActivity ?? '—'],
-        ['Run duration', agent.currentRunDurationMs != null ? formatDuration(agent.currentRunDurationMs) : '—'],
-        ['Last seen', formatTime(agent.lastSeenAt)],
-      ]),
+    storySection(
+      "What I've done",
+      doneEvents.length
+        ? (() => {
+            const list = el('ul', 'done-list')
+            doneEvents.forEach((event, index) => {
+              const item = el('li', 'done-item')
+              const mark =
+                agent.status === 'working' && index === 0 ? '●' : '✓'
+              item.append(
+                el('span', 'done-mark', mark),
+                el('span', '', describeEvent(event)),
+              )
+              list.append(item)
+            })
+            return list
+          })()
+        : emptyState('Nothing recorded yet.'),
     ),
   )
 
-  layout.append(
-    section(
-      'Current task',
-      currentRun
-        ? facts([
-            ['Run', currentRun.id],
-            ['Run status', currentRun.status],
-            ['Started', formatTime(currentRun.startedAt)],
-            ['Events', String(currentRun.events.length)],
-            [
-              'Latest prompt',
-              [...currentRun.events].reverse().find((event) => event.type === 'prompt')?.text ?? '—',
-            ],
-          ])
-        : emptyState('No active run.'),
-    ),
+  const how = howImDoingLine(agent, openIncidents)
+  const howBody = document.createElement('div')
+  howBody.append(
+    el('p', `how-title how-title--${how.tone}`, `${how.tone === 'ok' ? '💚' : how.tone === 'help' ? '🔴' : '⚫'} ${how.title}`),
+    el('p', 'story-copy', how.detail),
   )
+  layout.append(storySection("How I'm doing", howBody))
 
   layout.append(
-    section(
-      'Recent runs',
+    storySection(
+      'Recent work',
       recentRuns.length
         ? (() => {
-            const list = el('ul', 'run-list')
-            for (const run of recentRuns) {
-              const item = el('li', 'run-list-item')
-              item.append(
-                el('code', 'mono', run.id),
-                el('span', 'incident-meta', `${run.status} · ${formatTime(run.startedAt)}`),
-              )
+            const list = el('ul', 'recent-work-list')
+            let lastDay = ''
+            for (const run of recentRuns.slice(0, 8)) {
+              const day = dayLabel(run.startedAt)
+              if (day !== lastDay) {
+                list.append(el('li', 'recent-work-day', day))
+                lastDay = day
+              }
+              const item = el('li', 'recent-work-item')
+              item.textContent = runTitle(run)
               list.append(item)
             }
             return list
           })()
-        : emptyState('No runs recorded.'),
+        : emptyState('No recent work yet.'),
     ),
   )
 
-  layout.append(
-    section(
-      'Recent activity',
-      recentEvents.length
-        ? (() => {
-            const list = el('ul', 'activity-feed')
-            for (const event of recentEvents.slice(0, 20)) {
-              const item = el('li', 'activity-item')
-              item.append(
-                el('span', 'activity-time', formatTime(event.timestamp)),
-                el('code', 'mono', event.type),
-                el('span', '', summarizeEvent(event)),
-              )
-              list.append(item)
-            }
-            return list
-          })()
-        : emptyState('No events yet.'),
-    ),
+  const techBody = document.createElement('div')
+  techBody.append(
+    facts([
+      ['Agent id', agent.id],
+      ['Runtime', agent.runtime],
+      ['Status (raw)', agent.status],
+      ['Current run', agent.currentRunId ?? '—'],
+      ['Run count', String(agent.runCount)],
+      ['Last seen', formatTime(agent.lastSeenAt)],
+      ['Open incidents', String(openIncidents.length)],
+      ['Past incidents', String(pastIncidents.length)],
+    ]),
   )
 
-  layout.append(
-    section(
-      'Open incidents',
-      openIncidents.length
-        ? (() => {
-            const list = el('div', 'incident-list')
-            for (const incident of openIncidents) {
-              list.append(renderIncidentCard({ ...incident, severity: 'critical' }))
-            }
-            return list
-          })()
-        : emptyState('No open incidents.'),
-    ),
-  )
+  if (currentRun) {
+    techBody.append(el('h3', 'record-section-title', 'Current run events (raw)'))
+    const list = el('ul', 'evidence-event-list')
+    for (const event of currentRun.events.slice(-15)) {
+      list.append(
+        el(
+          'li',
+          'evidence-event-item',
+          el('code', 'mono', `${event.type} · ${event.id} · seq ${event.sequence}`),
+        ),
+      )
+    }
+    techBody.append(list)
+  }
 
-  layout.append(
-    section(
-      'Past incidents',
-      pastIncidents.length
-        ? (() => {
-            const list = el('div', 'incident-list')
-            for (const incident of pastIncidents.slice(0, 10)) {
-              list.append(renderIncidentCard({ ...incident, severity: 'unknown' }))
-            }
-            return list
-          })()
-        : emptyState('No cleared incidents yet.'),
-    ),
-  )
+  if (recentRuns.length) {
+    techBody.append(el('h3', 'record-section-title', 'Run ids'))
+    const list = el('ul', 'evidence-event-list')
+    for (const run of recentRuns) {
+      list.append(el('li', 'evidence-event-item', el('code', 'mono', `${run.id} · ${run.status}`)))
+    }
+    techBody.append(list)
+  }
 
+  if (openIncidents.length || pastIncidents.length) {
+    techBody.append(el('h3', 'record-section-title', 'Incidents'))
+    const list = el('ul', 'evidence-event-list')
+    for (const incident of [...openIncidents, ...pastIncidents.slice(0, 5)]) {
+      const link = el('a', 'link-agent', incident.id)
+      link.href = `#/incidents/${incident.id}`
+      const item = el('li', 'evidence-event-item')
+      item.append(link, document.createTextNode(` · ${incident.status}`))
+      list.append(item)
+    }
+    techBody.append(list)
+  }
+
+  layout.append(techDetails('Technical details', techBody))
   content.append(layout)
 }
 
@@ -431,77 +498,108 @@ async function renderAgentProfile(agentId) {
 
 async function renderActivityPage() {
   crumb.textContent = 'Activity'
-  content.replaceChildren(el('p', 'activity-line', 'Loading activity…'))
+  content.replaceChildren(el('p', 'activity-line', 'Loading…'))
 
-  const data = await fetchJson('/api/activity')
+  const [activityData, agentsData] = await Promise.all([
+    fetchJson('/api/activity'),
+    fetchJson('/api/agents'),
+  ])
+  cacheAgentNames(agentsData.agents)
   content.replaceChildren()
 
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Activity'),
-    el('p', '', 'Recent events from persisted agent runs — newest first.'),
+    el('p', '', 'What your agents have been doing — newest first.'),
   )
   content.append(head)
 
-  if (!data.activity.length) {
-    content.append(emptyState('No activity recorded yet.'))
+  if (!activityData.activity.length) {
+    content.append(emptyState('No activity yet.'))
     return
   }
 
-  const list = el('ul', 'activity-feed')
-  for (const item of data.activity) {
+  const list = el('ul', 'activity-feed activity-feed--plain')
+  for (const item of activityData.activity) {
     const row = el('li', 'activity-item')
+    const name = displayAgentName(item.agentId)
     row.append(
       el('span', 'activity-time', formatTime(item.at)),
-      agentLink(item.agentId, item.agentId),
-      el('code', 'mono', item.type),
-      el('span', '', item.summary),
+      agentLink(item.agentId, name),
+      el('span', '', item.summary || describeEvent({ type: item.type })),
     )
     list.append(row)
   }
   content.append(list)
 }
 
-/* ─── Hospital landing ─── */
+function agentLink(agentId, label) {
+  const link = el('a', 'link-agent', label)
+  link.href = `#/agents/${encodeURIComponent(agentId)}`
+  return link
+}
+
+/* ─── Hospital ─── */
 
 async function renderHospitalPage() {
   crumb.textContent = 'Hospital'
-  content.replaceChildren(el('p', 'activity-line', 'Loading hospital queue…'))
+  content.replaceChildren(el('p', 'activity-line', 'Loading…'))
 
-  const data = await fetchJson('/api/incidents')
+  const [incidentsData, agentsData] = await Promise.all([
+    fetchJson('/api/incidents'),
+    fetchJson('/api/agents'),
+  ])
+  cacheAgentNames(agentsData.agents)
   content.replaceChildren()
 
   const head = el('div', 'page-head hospital-head')
-  const title = el('div', 'hospital-title')
-  title.append(
+  head.append(
     el('h1', '', 'Hospital'),
-    el(
-      'p',
-      '',
-      'Diagnostic records for agents with open failures. Manager view stays on Agents; this is where you inspect and treat.',
-    ),
+    el('p', '', 'Who needs help right now — and how we can help them.'),
   )
-  head.append(title)
   content.append(head)
 
-  const open = data.incidents.filter((incident) =>
+  const open = incidentsData.incidents.filter((incident) =>
     ['open', 'in_hospital'].includes(incident.status),
   )
 
   if (!open.length) {
-    content.append(emptyState('No patients in Hospital — no open incidents.'))
+    content.append(emptyState('Nobody needs help right now. Nice!'))
     return
   }
 
   const list = el('div', 'incident-list')
-  list.append(el('h2', 'incident-group-title', 'Needs attention'))
+  list.append(el('h2', 'incident-group-title', 'Who needs help?'))
   for (const incident of open) {
-    list.append(renderIncidentCard(incident))
+    list.append(renderHelpCard(incident, agentsData.agents))
   }
   content.append(list)
 }
 
-/* ─── Memory ─── */
+function renderHelpCard(incident, agents) {
+  const card = el('button', 'incident-card incident-card--help', '')
+  card.type = 'button'
+  card.addEventListener('click', () => {
+    location.hash = `#/incidents/${incident.id}`
+  })
+
+  const agent = agents.find((a) => a.id === incident.agentId)
+  const name = agent?.name ?? incident.agentId ?? 'An agent'
+
+  const top = el('div', 'incident-card-top')
+  const identity = el('div', 'agent-card-identity')
+  if (agent) identity.append(mascotForAgent(agent, 'sm'))
+  const copy = document.createElement('div')
+  copy.append(el('h2', '', name), el('p', 'incident-symptom', symptomLine(incident, firstName({ name }))))
+  identity.append(copy)
+  top.append(identity, incidentStatusBadge(incident.status, incident.severity))
+  card.append(top)
+
+  const foot = el('div', 'incident-card-foot')
+  foot.append(el('span', 'btn btn-ghost', 'See what’s wrong'))
+  card.append(foot)
+  return card
+}
 
 function renderMemoryPage() {
   crumb.textContent = 'Memory'
@@ -510,17 +608,15 @@ function renderMemoryPage() {
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Memory'),
-    el('p', '', 'Agent memory is not persisted in Lucid yet.'),
+    el('p', '', 'Long-term agent memory is not saved in Lucid yet.'),
   )
   content.append(head)
   content.append(
     emptyState(
-      'Memory department is unavailable — no real memory store is connected. Lucid will not show invented learned/failure lists.',
+      'Memory is unavailable for now. Lucid will not make up learned lists or fake memories.',
     ),
   )
 }
-
-/* ─── Incidents (shared list + hospital record) ─── */
 
 function renderIncidentCard(incident) {
   const card = el('button', 'incident-card', '')
@@ -529,23 +625,20 @@ function renderIncidentCard(incident) {
     location.hash = `#/incidents/${incident.id}`
   })
 
+  const name = incident.agentId ? displayAgentName(incident.agentId) : 'An agent'
   const top = el('div', 'incident-card-top')
   const copy = document.createElement('div')
   copy.append(
-    el('h2', '', incident.title),
-    el('p', 'incident-meta', `${incident.department ?? '—'} / ${incident.disease ?? '—'}`),
+    el('h2', '', name),
+    el('p', 'incident-symptom', symptomLine(incident, firstName({ name }))),
   )
   top.append(copy, incidentStatusBadge(incident.status, incident.severity))
   card.append(top)
 
-  if (incident.symptom) {
-    card.append(el('p', 'incident-symptom', incident.symptom))
-  }
-
   const foot = el('div', 'incident-card-foot')
   foot.append(
     el('span', 'incident-meta', formatTime(incident.updatedAt)),
-    el('span', 'btn btn-ghost', 'Open record'),
+    el('span', 'btn btn-ghost', 'See what’s wrong'),
   )
   card.append(foot)
   return card
@@ -553,22 +646,24 @@ function renderIncidentCard(incident) {
 
 async function renderIncidentsPage() {
   crumb.textContent = 'Incidents'
-  content.replaceChildren(el('p', 'activity-line', 'Loading incidents…'))
+  content.replaceChildren(el('p', 'activity-line', 'Loading…'))
 
-  const data = await fetchJson('/api/incidents')
+  const [data, agentsData] = await Promise.all([
+    fetchJson('/api/incidents'),
+    fetchJson('/api/agents'),
+  ])
+  cacheAgentNames(agentsData.agents)
   content.replaceChildren()
 
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Incidents'),
-    el('p', '', 'All incidents from local agent runs — open and recently cleared.'),
+    el('p', '', 'Times an agent needed help — open ones and ones that got better.'),
   )
   content.append(head)
 
   if (!data.incidents.length) {
-    content.append(
-      emptyState('No incidents yet. Run an agent with the Lucid observer to record file-write events.'),
-    )
+    content.append(emptyState('No incidents yet. That’s a good thing!'))
     return
   }
 
@@ -576,298 +671,237 @@ async function renderIncidentsPage() {
   const cleared = data.incidents.filter((i) => ['cleared', 'closed'].includes(i.status))
 
   const list = el('div', 'incident-list')
-
-  list.append(el('h2', 'incident-group-title', 'Open incidents'))
+  list.append(el('h2', 'incident-group-title', 'Needs help'))
   if (open.length) {
-    for (const incident of open) {
-      list.append(renderIncidentCard(incident))
-    }
+    for (const incident of open) list.append(renderIncidentCard(incident))
   } else {
-    list.append(emptyState('No open incidents.'))
+    list.append(emptyState('Nobody needs help right now.'))
   }
 
   if (cleared.length) {
-    list.append(el('h2', 'incident-group-title', 'Recently cleared'))
-    for (const incident of cleared) {
-      list.append(renderIncidentCard(incident))
-    }
+    list.append(el('h2', 'incident-group-title', 'All better'))
+    for (const incident of cleared) list.append(renderIncidentCard(incident))
   }
 
   content.append(list)
 }
 
-function summarizeEvent(event) {
-  switch (event.type) {
-    case 'prompt':
-      return `${event.role ?? 'prompt'}: ${event.text}`
-    case 'model_response':
-      return event.reasonSummary || event.text
-    case 'tool_result':
-      return `${event.toolName} ok=${event.ok}`
-    case 'file_write':
-      return `${event.path} hash=${event.hash.slice(0, 12)}`
-    case 'error':
-      return event.message
-    default:
-      return event.type
-  }
-}
-
 function renderHashChain(chain) {
-  const wrap = el('div', 'hash-chain')
+  const wrap = el('div', 'hash-chain hash-chain--simple')
   chain.forEach((step, index) => {
     if (index > 0) wrap.append(el('span', 'hash-arrow', '→'))
+    const label =
+      step.role === 'first-seen' ? 'A' : step.role === 'repeated' ? 'A' : 'B'
     const chip = el(
       'span',
       `hash-chip${step.role === 'repeated' || step.role === 'first-seen' ? ' is-repeat' : ''}`,
-      step.shortHash,
+      label,
     )
-    chip.title = `seq ${step.sequence} · ${step.path} · ${step.role}`
+    chip.title = `${step.shortHash} · seq ${step.sequence} · ${step.path}`
     wrap.append(chip)
   })
   return wrap
 }
 
-function renderRootCause(rootCauseDiagnosis, rootCauseEvidenceEvents) {
-  if (!rootCauseDiagnosis) {
-    return emptyState('Root cause not analyzed for this incident.')
-  }
-
-  const body = document.createElement('div')
-  body.append(
-    facts([
-      ['Type', rootCauseDiagnosis.rootCauseType],
-      ['Title', rootCauseDiagnosis.title],
-      ['Confidence', `${Math.round(rootCauseDiagnosis.confidence * 100)}%`],
-      ['Affected component', rootCauseDiagnosis.affectedComponent],
-    ]),
-    el('p', 'record-copy', rootCauseDiagnosis.explanation),
-  )
-
-  if (rootCauseDiagnosis.evidenceEventIds.length) {
-    const evidenceWrap = el('div', 'root-cause-evidence')
-    evidenceWrap.append(el('h3', 'record-section-title', 'Cited evidence'))
-    const list = el('ul', 'evidence-event-list')
-    for (const eventId of rootCauseDiagnosis.evidenceEventIds) {
-      const event = rootCauseEvidenceEvents.find((item) => item.id === eventId)
-      const item = el('li', 'evidence-event-item')
-      if (!event) {
-        item.textContent = `${eventId} (not loaded)`
-      } else {
-        item.append(
-          el('code', 'mono', `${event.id} · seq ${event.sequence} · ${event.type}`),
-          el('span', 'evidence-event-copy', summarizeEvent(event)),
-        )
-      }
-      list.append(item)
+function citedRuleTexts(rootCauseDiagnosis, rootCauseEvidenceEvents) {
+  if (!rootCauseDiagnosis?.evidenceEventIds?.length) return []
+  const rules = []
+  for (const eventId of rootCauseDiagnosis.evidenceEventIds) {
+    const event = rootCauseEvidenceEvents.find((item) => item.id === eventId)
+    if (event?.type === 'prompt' && event.text) {
+      rules.push(event.text.trim())
     }
-    evidenceWrap.append(list)
-    body.append(evidenceWrap)
   }
-
-  return body
-}
-
-function renderTreatment(treatment) {
-  if (!treatment) {
-    return emptyState('No treatment prescribed.')
-  }
-  const body = document.createElement('div')
-  body.append(
-    facts([
-      ['Target', treatment.target],
-      ['Target component', treatment.targetComponent],
-      ['Risk level', treatment.riskLevel],
-      ['Review required', treatment.requiresReview ? 'Yes' : 'No'],
-      ['Safe to auto-apply', treatment.safeToAutoApply ? 'Yes' : 'No'],
-      ['Root cause type', treatment.rootCauseType],
-    ]),
-    el('p', 'record-copy', treatment.currentProblematicState),
-    facts([
-      ['Proposed change', treatment.proposedChange],
-      ['Rationale', treatment.rationale],
-      ['Rollback strategy', treatment.rollbackStrategy],
-    ]),
-  )
-
-  if (treatment.evidenceEventIds?.length) {
-    const evidenceWrap = el('div', 'root-cause-evidence')
-    evidenceWrap.append(el('h3', 'record-section-title', 'Diagnosis evidence'))
-    const list = el('ul', 'evidence-event-list')
-    for (const eventId of treatment.evidenceEventIds) {
-      list.append(el('li', 'evidence-event-item', el('code', 'mono', eventId)))
-    }
-    evidenceWrap.append(list)
-    body.append(evidenceWrap)
-  }
-
-  const cli = el('pre', 'cli-block')
-  cli.append(
-    el('span', 'prompt', '$ '),
-    el('span', 'cmd', 'npm run lucid -- fix'),
-    document.createTextNode('\n'),
-    el('span', 'prompt', '# review treatment in terminal — auto-apply disabled'),
-  )
-  body.append(cli)
-  return body
+  return rules
 }
 
 async function renderIncidentDetail(incidentId) {
   crumb.textContent = 'Hospital / …'
-  content.replaceChildren(el('p', 'activity-line', 'Loading incident…'))
+  content.replaceChildren(el('p', 'activity-line', 'Loading…'))
 
   const detail = await fetchJson(`/api/incidents/${encodeURIComponent(incidentId)}`)
   content.replaceChildren()
 
-  const { incident, run, diagnosis, rootCauseDiagnosis, rootCauseEvidenceEvents, treatment, recheck, hashChain, fileStates, evidence } =
-    detail
+  const {
+    incident,
+    run,
+    diagnosis,
+    rootCauseDiagnosis,
+    rootCauseEvidenceEvents,
+    treatment,
+    recheck,
+    hashChain,
+    fileStates,
+    evidence,
+  } = detail
 
-  crumb.textContent = `Hospital / ${incident.title}`
+  const agentName =
+    (run?.agentId && displayAgentName(run.agentId)) ||
+    incident.agentId ||
+    'This agent'
+  const short = firstName({ name: agentName })
 
-  const head = el('div', 'page-head incident-head hospital-head')
-  const title = el('div', 'hospital-title')
-  title.append(
-    el('h1', '', incident.title),
-    el(
-      'p',
-      '',
-      `${detail.detector?.department ?? '—'} / ${detail.detector?.disease ?? '—'} · severity ${detail.severity}`,
-    ),
-  )
-  const titleRow = el('div', 'incident-head-row')
-  titleRow.append(title, incidentStatusBadge(incident.status, detail.severity))
-  head.append(titleRow)
+  crumb.textContent = `Hospital / ${short}`
+
+  const head = el('div', 'page-head hospital-head')
+  head.append(el('h1', '', `🏥 ${short} is in the Hospital`))
+  head.append(incidentStatusBadge(incident.status, detail.severity))
 
   const actions = el('div', 'actions')
-  const backIncidents = el('button', 'btn', '← Incidents')
-  backIncidents.type = 'button'
-  backIncidents.addEventListener('click', () => {
-    location.hash = '#/incidents'
-  })
-  const backHospital = el('button', 'btn btn-ghost', 'Hospital queue')
+  const backHospital = el('button', 'btn', '← Who needs help')
   backHospital.type = 'button'
   backHospital.addEventListener('click', () => {
     location.hash = '#/hospital'
   })
+  actions.append(backHospital)
   if (run?.agentId) {
-    const agentBtn = el('button', 'btn btn-ghost', 'Agent profile')
+    const agentBtn = el('button', 'btn btn-ghost', `Back to ${short}`)
     agentBtn.type = 'button'
     agentBtn.addEventListener('click', () => {
       location.hash = `#/agents/${encodeURIComponent(run.agentId)}`
     })
     actions.append(agentBtn)
   }
-  actions.append(backHospital, backIncidents)
   head.append(actions)
   content.append(head)
 
-  const layout = el('div', 'incident-detail')
+  const layout = el('div', 'incident-detail incident-detail--story')
 
-  layout.append(
-    section(
-      'Status',
+  const happened = document.createElement('div')
+  happened.append(el('p', 'story-copy', symptomLine(incident, short)))
+  if (hashChain?.length) {
+    happened.append(el('p', 'story-meta', 'The same file went back to an old version:'))
+    happened.append(renderHashChain(hashChain))
+    happened.append(el('p', 'story-meta', 'A → B → A means they may be stuck in a loop.'))
+  }
+  layout.append(storySection('What happened?', happened))
+
+  const whyBody = document.createElement('div')
+  whyBody.append(el('p', 'story-copy', whyLine(rootCauseDiagnosis, short)))
+  const rules = citedRuleTexts(rootCauseDiagnosis, rootCauseEvidenceEvents || [])
+  if (rules.length) {
+    const ruleList = el('ol', 'rule-list')
+    rules.forEach((rule, index) => {
+      const item = el('li', 'rule-item')
+      item.append(el('strong', '', `Rule ${index + 1}: `), document.createTextNode(rule))
+      ruleList.append(item)
+    })
+    whyBody.append(ruleList)
+  }
+  layout.append(storySection('Why?', whyBody))
+
+  const helpBody = document.createElement('div')
+  helpBody.append(el('p', 'story-copy', helpLine(treatment, short)))
+  if (treatment) {
+    const show = el('button', 'btn btn-primary', 'Show treatment')
+    show.type = 'button'
+    const treatmentBox = el('div', 'treatment-plain')
+    treatmentBox.hidden = true
+    treatmentBox.append(
+      el('p', 'story-copy', treatment.proposedChange || treatment.rationale || ''),
+      el('p', 'story-meta', 'In the terminal you can review carefully:'),
+    )
+    const cli = el('pre', 'cli-block')
+    cli.append(
+      el('span', 'prompt', '$ '),
+      el('span', 'cmd', `npm run lucid -- fix ${incident.id}`),
+    )
+    treatmentBox.append(cli)
+    show.addEventListener('click', () => {
+      treatmentBox.hidden = !treatmentBox.hidden
+      show.textContent = treatmentBox.hidden ? 'Show treatment' : 'Hide treatment'
+    })
+    helpBody.append(show, treatmentBox)
+  }
+  layout.append(storySection('How do we help?', helpBody))
+
+  const tech = document.createElement('div')
+  tech.append(
+    facts([
+      ['Incident id', incident.id],
+      ['Status', incident.status],
+      ['Severity', detail.severity],
+      ['Department', diagnosis?.department ?? incident.department ?? '—'],
+      ['Disease', diagnosis?.disease ?? incident.disease ?? '—'],
+      ['Opened', formatTime(incident.createdAt)],
+      ['Updated', formatTime(incident.updatedAt)],
+      ['Run', run?.id ?? '—'],
+      ['Agent id', run?.agentId ?? incident.agentId ?? '—'],
+    ]),
+  )
+
+  if (fileStates) {
+    tech.append(
+      el('h3', 'record-section-title', 'File states'),
       facts([
-        ['Incident', incident.id],
-        ['Status', incident.status],
-        ['Severity', detail.severity],
-        ['Opened', formatTime(incident.createdAt)],
-        ['Updated', formatTime(incident.updatedAt)],
+        ['File', fileStates.file],
+        ['Hash', fileStates.hash],
+        ['First seen seq', String(fileStates.firstSeen.sequence)],
+        ['Repeated seq', String(fileStates.repeated.sequence)],
       ]),
-    ),
-  )
+    )
+  }
 
-  layout.append(
-    section(
-      'Run / task',
-      run
-        ? facts([
-            ['Run', run.id],
-            ['Agent', run.agentId ?? '—'],
-            ['Run status', run.status],
-            ['Started', formatTime(run.startedAt)],
-            ['Events', String(run.events.length)],
-          ])
-        : emptyState('No linked run.'),
-    ),
-  )
+  if (evidence) {
+    tech.append(el('h3', 'record-section-title', 'Deterministic evidence'), el('p', 'record-copy mono', evidence))
+  }
 
-  layout.append(
-    section(
-      'Affected file',
-      fileStates
-        ? facts([
-            ['File', fileStates.file],
-            ['Repeated hash', fileStates.hash.slice(0, 12) + '…'],
-            ['First seen', `seq ${fileStates.firstSeen.sequence}`],
-            ['Repeated at', `seq ${fileStates.repeated.sequence}`],
-          ])
-        : emptyState('No file-state loop identified.'),
-    ),
-  )
+  if (hashChain?.length) {
+    tech.append(el('h3', 'record-section-title', 'Hash chain'))
+    const legend = el('ul', 'chain-legend')
+    for (const step of hashChain) {
+      const item = el('li', '')
+      item.append(
+        el('code', '', step.shortHash),
+        document.createTextNode(` seq ${step.sequence} · ${step.role} · ${step.eventId}`),
+      )
+      legend.append(item)
+    }
+    tech.append(legend)
+  }
 
-  layout.append(section('What happened', incident.title))
-
-  layout.append(
-    section(
-      'Deterministic evidence',
-      evidence ? el('p', 'record-copy mono', evidence) : emptyState('No evidence recorded.'),
-    ),
-  )
-
-  layout.append(
-    section(
-      'A → B → A visualization',
-      hashChain?.length
-        ? (() => {
-            const body = document.createElement('div')
-            body.append(renderHashChain(hashChain))
-            const legend = el('ul', 'chain-legend')
-            for (const step of hashChain) {
-              const item = el('li', '')
-              item.append(
-                el('code', '', step.shortHash),
-                document.createTextNode(
-                  ` seq ${step.sequence} · ${step.role}${step.role === 'repeated' ? ' (matches first)' : ''}`,
-                ),
-              )
-              legend.append(item)
-            }
-            body.append(legend)
-            return body
-          })()
-        : emptyState('Hash chain not available.'),
-    ),
-  )
-
-  layout.append(
-    section(
-      'Diagnosis',
-      diagnosis
-        ? facts([
-            ['Department', diagnosis.department],
-            ['Disease', diagnosis.disease],
-            ['Status', diagnosis.status],
-            ['Symptom', diagnosis.symptom],
-            ['Evidence', diagnosis.evidence],
-          ])
-        : emptyState('Diagnosis unavailable.'),
-    ),
-  )
-
-  layout.append(section('Root cause', renderRootCause(rootCauseDiagnosis, rootCauseEvidenceEvents)))
-  layout.append(section('Treatment', renderTreatment(treatment)))
-
-  layout.append(
-    section(
-      'Recheck',
+  if (rootCauseDiagnosis) {
+    tech.append(
+      el('h3', 'record-section-title', 'Root cause (raw)'),
       facts([
-        ['Available', recheck.available ? 'Yes' : 'No'],
-        ['Passed', recheck.passed == null ? '—' : recheck.passed ? 'Yes' : 'No'],
+        ['Type', rootCauseDiagnosis.rootCauseType],
+        ['Title', rootCauseDiagnosis.title],
+        ['Confidence', `${Math.round(rootCauseDiagnosis.confidence * 100)}%`],
+        ['Affected component', rootCauseDiagnosis.affectedComponent],
+        ['Evidence event ids', rootCauseDiagnosis.evidenceEventIds.join(', ') || '—'],
+      ]),
+      el('p', 'record-copy', rootCauseDiagnosis.explanation),
+    )
+  }
+
+  if (treatment) {
+    tech.append(
+      el('h3', 'record-section-title', 'Treatment (raw)'),
+      facts([
+        ['Target', treatment.target],
+        ['Target component', treatment.targetComponent],
+        ['Risk', treatment.riskLevel],
+        ['Requires review', treatment.requiresReview ? 'yes' : 'no'],
+        ['Safe to auto-apply', treatment.safeToAutoApply ? 'yes' : 'no'],
+        ['Root cause type', treatment.rootCauseType],
+        ['Rollback', treatment.rollbackStrategy],
+      ]),
+    )
+  }
+
+  if (recheck) {
+    tech.append(
+      el('h3', 'record-section-title', 'Recheck'),
+      facts([
+        ['Available', recheck.available ? 'yes' : 'no'],
+        ['Passed', recheck.passed == null ? '—' : recheck.passed ? 'yes' : 'no'],
         ['Evidence', recheck.evidence],
+        ['Run id', recheck.runId ?? '—'],
       ]),
-    ),
-  )
+    )
+  }
 
+  layout.append(techDetails('Technical details', tech))
   content.append(layout)
 }
 
@@ -905,9 +939,7 @@ async function render() {
   } catch (error) {
     console.error(error)
     bootError.hidden = false
-    content.replaceChildren(
-      emptyState('Could not load from Lucid API. Is npm run web running?'),
-    )
+    content.replaceChildren(emptyState('Could not load Lucid. Is the server running?'))
   }
 }
 
