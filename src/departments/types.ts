@@ -8,13 +8,27 @@ import {
 import type { FileEdit, LoopSignal, RootCause, Treatment } from '../types.ts'
 
 /**
+ * Project-level instructions loaded from `.lucid/instructions.json`
+ * and attached to a trace for instruction-amnesia detection.
+ */
+export type ProjectInstruction = {
+  id: string
+  text: string
+  onlyPaths?: string[]
+  forbidPaths?: string[]
+  forbidTools?: string[]
+  sourceEventId?: string
+}
+
+/**
  * Detector-facing observation of an agent.
- * Shipped diseases (repeated-file-state) read successful file_write events
- * from `run` or `events` — not legacy FileEdit fixtures.
+ * Shipped diseases read events from `run` or `events` — not legacy FileEdit fixtures.
  */
 export type AgentTrace = {
   events?: AgentEvent[]
   run?: AgentRun
+  /** Optional durable constraints from local instruction store. */
+  projectInstructions?: ProjectInstruction[]
 }
 
 /** Successful file_write events from a trace (deterministic order). */
@@ -22,6 +36,15 @@ export function resolveTraceFileWrites(trace: AgentTrace): FileWriteEvent[] {
   if (trace.run) return successfulFileWriteEvents(trace.run.events)
   if (trace.events) return successfulFileWriteEvents(trace.events)
   return []
+}
+
+/** Events from a trace in a stable order. */
+export function resolveTraceEvents(trace: AgentTrace): AgentEvent[] {
+  const events = trace.run?.events ?? trace.events ?? []
+  return [...events].sort((left, right) => {
+    if (left.sequence !== right.sequence) return left.sequence - right.sequence
+    return left.id.localeCompare(right.id)
+  })
 }
 
 /** @deprecated Prefer resolveTraceFileWrites — kept for display/adapters. */
@@ -42,12 +65,76 @@ export type IncidentContext = {
   treatment?: Treatment
 }
 
+export type ScopeExplosionSignal = {
+  fileCount: number
+  topLevelDirs: string[]
+  totalBytes: number
+  paths: string[]
+  reason: 'multi-dir-blast' | 'high-file-count' | 'prompt-scope-violation'
+  promptPaths?: string[]
+  outsidePaths?: string[]
+  triggeringEventId: string
+}
+
+export type PriorFixRegressedSignal = {
+  testName: string
+  firstPassEventId: string
+  firstPassSequence: number
+  laterFailEventId: string
+  laterFailSequence: number
+}
+
+export type InstructionAmnesiaSignal = {
+  constraintId: string
+  constraintText: string
+  constraintKind: 'only-edit' | 'forbid-path' | 'forbid-tool'
+  violatingEventId: string
+  violatingSequence: number
+  violatingDetail: string
+}
+
+export type RedundantRewriteSignal = {
+  matchKind: 'exact' | 'structural'
+  hash: string
+  firstPath: string
+  firstEventId: string
+  firstSequence: number
+  duplicatePath: string
+  duplicateEventId: string
+  duplicateSequence: number
+}
+
 export type RepeatedFileStateAbnormality = {
   kind: 'repeated-file-state'
   signal: LoopSignal
 }
 
-export type Abnormality = RepeatedFileStateAbnormality
+export type ScopeExplosionAbnormality = {
+  kind: 'scope-explosion'
+  signal: ScopeExplosionSignal
+}
+
+export type PriorFixRegressedAbnormality = {
+  kind: 'prior-fix-regressed'
+  signal: PriorFixRegressedSignal
+}
+
+export type InstructionAmnesiaAbnormality = {
+  kind: 'instruction-amnesia'
+  signal: InstructionAmnesiaSignal
+}
+
+export type RedundantRewriteAbnormality = {
+  kind: 'redundant-rewrite'
+  signal: RedundantRewriteSignal
+}
+
+export type Abnormality =
+  | RepeatedFileStateAbnormality
+  | ScopeExplosionAbnormality
+  | PriorFixRegressedAbnormality
+  | InstructionAmnesiaAbnormality
+  | RedundantRewriteAbnormality
 
 export type DiagnosisResult = {
   department: string

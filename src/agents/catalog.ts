@@ -21,7 +21,11 @@ export function resolveAgentCatalog(
   role: string | null
 } {
   const key = configKeyFromAgentId(agentId)
-  const configured = repoAgents.agents[key] ?? repoAgents.agents[agentId]
+  const configured =
+    repoAgents.agents[key] ??
+    repoAgents.agents[agentId] ??
+    (agentId === 'subprocess' ? repoAgents.agents.gitty : undefined) ??
+    (agentId === 'gitty' ? repoAgents.agents.subprocess : undefined)
 
   if (configured?.name) {
     return {
@@ -60,13 +64,9 @@ export function resolveAgentCatalog(
 
   if (agentId === 'gitty' || agentId === 'subprocess') {
     return {
-      name: configured?.name ?? (agentId === 'gitty' ? 'Gitty' : 'Subprocess'),
-      characterId: configured?.characterId ?? (agentId === 'gitty' ? 'kitty' : null),
-      role:
-        configured?.role ??
-        (agentId === 'gitty'
-          ? 'Takes care of all your git work and PRs'
-          : 'Commands observed via lucid run'),
+      name: configured?.name ?? 'Gitty',
+      characterId: configured?.characterId ?? 'kitty',
+      role: configured?.role ?? 'Takes care of all your git work and PRs',
     }
   }
 

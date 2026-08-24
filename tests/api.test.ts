@@ -160,8 +160,10 @@ test('GET /api/incidents/:id returns enriched incident detail', async () => {
     assert.equal(body.fileStates.file, 'auth.py')
     assert.equal(body.fileStates.firstSeen.eventId, 'w-a1')
     assert.equal(body.fileStates.repeated.eventId, 'w-a2')
-    assert.equal(body.fileStates.firstSeen.content, 'state-A')
-    assert.equal(body.fileStates.repeated.content, 'state-A')
+    assert.equal(body.fileStates.firstSeen.content, undefined)
+    assert.equal(body.fileStates.repeated.content, undefined)
+    assert.ok(body.fileStates.firstSeen.hash)
+    assert.equal(body.fileStates.firstSeen.hash, body.fileStates.repeated.hash)
 
     assert.ok(Array.isArray(body.hashChain))
     assert.equal(body.hashChain.length, 3)
@@ -202,7 +204,7 @@ test('GET /api/hospital/staff returns built-in staff only', async () => {
     assert.ok(
       body.staff.every(
         (member: { name: string; id: string }) =>
-          !['Uma', 'Gitty'].includes(member.name) && member.id !== 'uma' && member.id !== 'subprocess',
+          !['Uma', 'Gitty'].includes(member.name) && member.id !== 'uma' && member.id !== 'gitty',
       ),
     )
 

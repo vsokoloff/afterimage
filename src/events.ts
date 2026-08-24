@@ -63,6 +63,16 @@ export type ModelResponseEvent = AgentEventBase & {
   text: string
   /** Short decision/reason summary when the adapter has one. */
   reasonSummary?: string
+  /** Provider discriminator (e.g. OpenTelemetry `gen_ai.provider.name`). */
+  provider?: string
+  /** Prompt / input token count when known. */
+  inputTokens?: number
+  /** Completion / output token count when known. */
+  outputTokens?: number
+  /** Provider response id when known. */
+  responseId?: string
+  /** Finish / stop reasons when known. */
+  finishReasons?: string[]
 }
 
 export type ToolCallEvent = AgentEventBase & {
@@ -91,15 +101,19 @@ export type FileWriteEvent = AgentEventBase & {
   /**
    * Complete file contents after the write, when retained.
    * Prefer this for debugging and for building legacy `FileEdit` traces.
+   * Omitted by default (privacy-first); set LUCID_STORE_FILE_CONTENT=1 to keep.
    */
   content?: string
   /**
    * Exact UTF-8 string that was hashed when full `content` is not stored.
    * Must produce `hash` when passed through SHA-256.
+   * Also stripped by default unless file-content retention is enabled.
    */
   contentHashInput?: string
-  /** SHA-256 hex digest of `content` or `contentHashInput`. */
+  /** SHA-256 hex digest of `content`, `contentHashInput`, or a trusted precomputed hash. */
   hash: string
+  /** UTF-8 byte length of the observed file state (metadata; safe to retain). */
+  byteLength?: number
   /** Defaults to true when omitted. Failed writes are ignored by looping detect. */
   ok?: boolean
 }
@@ -151,15 +165,20 @@ export type AgentEvent =
 
 export type AgentEventType = AgentEvent['type']
 
-/** Bytes that must hash to `event.hash` (content preferred over contentHashInput). */
-export function fileWriteHashInput(event: FileWriteEvent): string {
+/**
+ * Bytes that must hash to `event.hash` when a body was retained.
+ * Returns undefined for hash-only (privacy-default) events.
+ */
+export function fileWriteHashInput(event: FileWriteEvent): string | undefined {
   if (event.content !== undefined) return event.content
   if (event.contentHashInput !== undefined) return event.contentHashInput
-  throw new Error(`file_write ${event.id} missing content and contentHashInput`)
+  return undefined
 }
 
 export function assertFileWriteHash(event: FileWriteEvent): void {
   const input = fileWriteHashInput(event)
+  if (input === undefined) return
+
   const expected = sha256Hex(input)
   if (expected !== event.hash) {
     throw new Error(
@@ -174,20 +193,24 @@ export type CreateFileWriteInput = {
   timestamp: string
   sequence: number
   path: string
-  /** Provide at least one of content or contentHashInput. */
+  /** Provide content, contentHashInput, and/or a precomputed hash. */
   content?: string
   contentHashInput?: string
+  /** Precomputed SHA-256 when the body is not retained. */
+  hash?: string
+  byteLength?: number
   /** Defaults to true (successful write). */
   ok?: boolean
 }
 
 /**
- * Build a file_write event and compute SHA-256 from content or contentHashInput.
+ * Build a file_write event.
+ * Hash is computed from content/contentHashInput when present; otherwise `hash` is required.
  */
 export function createFileWriteEvent(input: CreateFileWriteInput): FileWriteEvent {
   const hashSource = input.content ?? input.contentHashInput
-  if (hashSource === undefined) {
-    throw new Error('createFileWriteEvent requires content or contentHashInput')
+  if (hashSource === undefined && input.hash === undefined) {
+    throw new Error('createFileWriteEvent requires content, contentHashInput, or hash')
   }
   if (
     input.content !== undefined &&
@@ -195,6 +218,15 @@ export function createFileWriteEvent(input: CreateFileWriteInput): FileWriteEven
     input.content !== input.contentHashInput
   ) {
     throw new Error('content and contentHashInput must match when both are set')
+  }
+
+  const computedHash = hashSource !== undefined ? sha256Hex(hashSource) : undefined
+  if (
+    computedHash !== undefined &&
+    input.hash !== undefined &&
+    input.hash !== computedHash
+  ) {
+    throw new Error('hash does not match content or contentHashInput')
   }
 
   return {
@@ -206,7 +238,8 @@ export function createFileWriteEvent(input: CreateFileWriteInput): FileWriteEven
     path: input.path,
     content: input.content,
     contentHashInput: input.contentHashInput,
-    hash: sha256Hex(hashSource),
+    hash: computedHash ?? input.hash!,
+    byteLength: input.byteLength,
     ok: input.ok,
   }
 }
@@ -237,13 +270,14 @@ export function fileWriteEventsFromEvents(events: AgentEvent[]): FileWriteEvent[
 
 /**
  * Map file-write events → legacy `FileEdit` rows (CLI / visit display).
- * `sequence` becomes `turn`; hash input becomes `content`.
+ * `sequence` becomes `turn`; retained hash input becomes `content`.
+ * Hash-only events use an empty content string (source is not reconstructed).
  */
 export function fileWritesToEdits(writes: FileWriteEvent[]): FileEdit[] {
   return successfulFileWriteEvents(writes).map((write) => ({
     turn: write.sequence,
     file: write.path,
-    content: fileWriteHashInput(write),
+    content: fileWriteHashInput(write) ?? '',
   }))
 }
 

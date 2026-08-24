@@ -15,6 +15,10 @@ Lucid has two agent kinds — do not mix them:
 
 Staff diagnose and treat patients. Patients never appear in the staff list; staff never appear in Your agents. Details: [docs/hospital-staff.md](docs/hospital-staff.md).
 
+## Always observe dashboard agents
+
+Every agent on the Agents roster is a patient Lucid is watching. When they act through Lucid (Gitty push, Uma remember/show/forget, `lucid run`, Codex/OTEL adapters), work opens a real observed run so `lastSeenAt`, Activity, and Hospital stay honest. Shared helper: `withObservedAgentWork`. Legacy `subprocess` run ids roll up to **Gitty** on the roster.
+
 ## Local-first
 
 - Runs on your machine (`127.0.0.1`).
@@ -103,21 +107,29 @@ Auth Agent incident fields:
 
 `GET /api/visit` returns this record. The UI does not invent diagnosis.
 
+## Observation / ingestion
+
+Lucid’s durable contract is **`AgentEvent`**. Host adapters (process, Codex, future Cursor/Claude) and the **OpenTelemetry GenAI** path all normalize to `RecordableEvent` → `LucidObserver`. Detectors never import adapters.
+
+See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute mapping, and `lucid otel` (OTLP/HTTP `:4318`).
+
 ## Shipped path
 
 **Looping → repeated-file-state**:
 
 1. Hash full file contents after each successful write (SHA-256).
-2. If file `F` returns to a prior hash → abnormality.
-3. Fixture root cause: conflicting instructions.
-4. Prescribed treatment: resolve instruction conflict (report conflict instead of reverting).
-5. Recheck fixture has no loop → clear.
+2. Persist **hash + metadata** under `.lucid/` by default (not full source). Opt in with `LUCID_STORE_FILE_CONTENT=1` / `retainFileContent: true`.
+3. If file `F` returns to a prior hash → abnormality.
+4. Fixture root cause: conflicting instructions.
+5. Prescribed treatment: resolve instruction conflict (report conflict instead of reverting).
+6. Recheck fixture has no loop → clear.
 
 ## CLI
 
 | Command | Today |
 |---|---|
 | `lucid init` / `attach` | Stub |
+| `lucid otel` | Local OTLP/HTTP GenAI traces → AgentEvent |
 | `lucid status` | Fixture status |
 | `lucid doctor` | Run primary disease on fixture |
 | `lucid inspect` | Evidence + diagnosis |

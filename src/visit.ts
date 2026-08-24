@@ -78,7 +78,10 @@ export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
   const diagnosis = disease.diagnose(before, context)
   const treatment = disease.recommendFix(diagnosis, context)
   const verification = disease.verify(before, after)
-  const signal = diagnosis.abnormality?.signal ?? null
+  const signal =
+    diagnosis.abnormality?.kind === 'repeated-file-state'
+      ? diagnosis.abnormality.signal
+      : null
   const recheckSignal =
     verification.abnormality?.kind === 'repeated-file-state'
       ? verification.abnormality.signal

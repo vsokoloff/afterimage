@@ -28,8 +28,9 @@ test('filesystem watcher debounces duplicate events for one logical write', asyn
     const watcher = createFilesystemWatcher({
       workspaceRoot: root,
       debounceMs: 40,
+      includeContent: true,
       onWrite: async ({ content }) => {
-        writes.push(content)
+        writes.push(content ?? '')
       },
     })
 
@@ -46,6 +47,34 @@ test('filesystem watcher debounces duplicate events for one logical write', asyn
   }
 })
 
+test('filesystem watcher omits content by default (hash + byteLength only)', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-fs-privacy-'))
+  try {
+    const target = path.join(root, 'auth.py')
+    await writeFile(target, 'state-A', 'utf8')
+
+    const payloads: Array<{ content?: string; hash: string; byteLength: number }> = []
+    const watcher = createFilesystemWatcher({
+      workspaceRoot: root,
+      debounceMs: 20,
+      onWrite: async (payload) => {
+        payloads.push(payload)
+      },
+    })
+
+    watcher.start()
+    await watcher.observePath('auth.py')
+    await watcher.stop()
+
+    assert.equal(payloads.length, 1)
+    assert.equal(payloads[0]?.content, undefined)
+    assert.ok(payloads[0]?.hash)
+    assert.equal(payloads[0]?.byteLength, Buffer.byteLength('state-A', 'utf8'))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('filesystem watcher emits again when content hash changes', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-fs-change-'))
   try {
@@ -56,8 +85,9 @@ test('filesystem watcher emits again when content hash changes', async () => {
     const watcher = createFilesystemWatcher({
       workspaceRoot: root,
       debounceMs: 20,
+      includeContent: true,
       onWrite: async ({ content }) => {
-        writes.push(content)
+        writes.push(content ?? '')
       },
     })
 
@@ -83,8 +113,9 @@ test('snapshot seeds baseline so pre-existing A then B→A yields A→B→A', as
     const watcher = createFilesystemWatcher({
       workspaceRoot: root,
       debounceMs: 30,
+      includeContent: true,
       onWrite: async ({ content }) => {
-        writes.push(content)
+        writes.push(content ?? '')
       },
     })
 
@@ -114,8 +145,9 @@ test('distinct hashes inside a debounce window are not collapsed', async () => {
     const watcher = createFilesystemWatcher({
       workspaceRoot: root,
       debounceMs: 80,
+      includeContent: true,
       onWrite: async ({ content }) => {
-        writes.push(content)
+        writes.push(content ?? '')
       },
     })
 

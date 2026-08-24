@@ -17,6 +17,11 @@ export type RuntimeObserveOptions = {
   watchFilesystem?: boolean
   filesystemDebounceMs?: number
   watchFn?: WatchFn
+  /**
+   * Persist full file bodies on `file_write` events.
+   * Defaults to `LUCID_STORE_FILE_CONTENT` (off unless set).
+   */
+  retainFileContent?: boolean
   /** Default observe — log alert and continue the wrapped process. */
   incidentPolicy?: RunIncidentPolicy
   /** Base URL for local incident links (default http://127.0.0.1:3000). */

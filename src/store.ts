@@ -5,6 +5,7 @@ import { constants as fsConstants } from 'node:fs'
 import type { AgentEvent, AgentRun, AgentRunStatus } from './events.ts'
 import { newId } from './ids.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
+import { retainFileContentFromEnv, stripFileWriteBodies } from './privacy.ts'
 import type { StructuredTreatment } from './treatment/types.ts'
 import type { TreatmentApplicationRecord } from './treatment/adapters/types.ts'
 import { ensureWorkspace } from './workspace/store.ts'
@@ -17,6 +18,11 @@ export type LucidStore = {
   /** Absolute path to the repository / project root. */
   projectRoot: string
   workspace: Workspace
+  /**
+   * When false (default), `file_write` events are persisted without
+   * `content` / `contentHashInput` — only hash + metadata.
+   */
+  retainFileContent: boolean
 }
 
 export type OpenStoreOptions = {
@@ -26,6 +32,11 @@ export type OpenStoreOptions = {
   projectRoot?: string
   /** Absolute `.lucid` path — overrides default layout. Useful in tests. */
   storeRoot?: string
+  /**
+   * Keep full file bodies on `file_write` events.
+   * Defaults to `LUCID_STORE_FILE_CONTENT` env (off unless set).
+   */
+  retainFileContent?: boolean
 }
 
 type RunRecord = Omit<AgentRun, 'events'>
@@ -92,7 +103,9 @@ export async function openStore(options: OpenStoreOptions = {}): Promise<LucidSt
   const root = options.storeRoot ? path.resolve(options.storeRoot) : path.join(projectRoot, '.lucid')
   await mkdir(root, { recursive: true })
   const workspace = await ensureWorkspace({ root, projectRoot })
-  return { root, projectRoot, workspace }
+  const retainFileContent =
+    options.retainFileContent ?? retainFileContentFromEnv()
+  return { root, projectRoot, workspace, retainFileContent }
 }
 
 export type CreateRunInput = {
@@ -129,6 +142,7 @@ export async function createRun(
 /**
  * Append one event to a run's JSONL log.
  * Event must reference an existing run via `runId`.
+ * By default strips `file_write` bodies unless `store.retainFileContent`.
  */
 export async function appendEvent(
   store: LucidStore,
@@ -140,10 +154,11 @@ export async function appendEvent(
     throw new Error(`Cannot append event: unknown run ${event.runId}`)
   }
 
+  const redacted = stripFileWriteBodies(event, store.retainFileContent)
   const stored: AgentEvent = {
-    ...event,
-    id: event.id || newId('evt'),
-    timestamp: event.timestamp || new Date().toISOString(),
+    ...redacted,
+    id: redacted.id || newId('evt'),
+    timestamp: redacted.timestamp || new Date().toISOString(),
   }
 
   await appendFile(runEventsPath(store, event.runId), `${JSON.stringify(stored)}\n`, 'utf8')

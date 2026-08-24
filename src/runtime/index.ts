@@ -39,3 +39,18 @@ export {
   type CodexSDKMessage,
   type ObserveCodexRunOptions,
 } from './codex/index.ts'
+export {
+  coalesceProvider,
+  coalesceInputTokens,
+  coalesceOutputTokens,
+  decodeOtlpJsonTraceRequest,
+  otelSpansToRecordableEvents,
+  otlpRequestToRecordableEvents,
+  parseOtelArgv,
+  startOtlpHttpServer,
+  type OtelGroupBy,
+  type OtelNormalizeResult,
+  type OtlpHttpServer,
+  type OtlpHttpServerOptions,
+  type ParsedOtelArgv,
+} from './otel/index.ts'

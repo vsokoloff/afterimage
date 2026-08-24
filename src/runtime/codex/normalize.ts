@@ -1,5 +1,6 @@
 import { mergeCausalContext, sha256Hex } from '../../events.ts'
 import type { LucidObserver, RecordableEvent, RecordResult } from '../../observer.ts'
+import { retainFileContentFromEnv, stripFileWriteBodies } from '../../privacy.ts'
 import type {
   CodexAssistantMessage,
   CodexRunResult,
@@ -97,7 +98,8 @@ function fileWriteFromWriteTool(
     type: 'file_write',
     path,
     content,
-    hash: '', // observer path uses createFileWriteEvent at record time
+    hash: sha256Hex(content),
+    byteLength: Buffer.byteLength(content, 'utf8'),
     ok,
   }
 }
@@ -115,7 +117,8 @@ function fileWriteFromStrReplaceTool(
     type: 'file_write',
     path,
     contentHashInput: newString,
-    hash: '',
+    hash: sha256Hex(newString),
+    byteLength: Buffer.byteLength(newString, 'utf8'),
     ok,
   }
 }
@@ -356,31 +359,40 @@ export function codexRunResultToRecordableEvents(result: CodexRunResult): Record
 }
 
 /** Ensure file_write drafts include a SHA-256 hash before observer.record(). */
-export function finalizeFileWriteDraft(event: RecordableEvent): RecordableEvent {
+export function finalizeFileWriteDraft(
+  event: RecordableEvent,
+  retainFileContent = false,
+): RecordableEvent {
   if (event.type !== 'file_write') return event
-  if (event.hash) return event
 
-  const hashSource = event.content ?? event.contentHashInput
-  if (hashSource === undefined) {
-    throw new Error(`file_write for ${event.path} missing content or contentHashInput`)
+  let prepared: RecordableEvent = event
+  if (!event.hash) {
+    const hashSource = event.content ?? event.contentHashInput
+    if (hashSource === undefined) {
+      throw new Error(`file_write for ${event.path} missing content or contentHashInput`)
+    }
+    prepared = {
+      ...event,
+      hash: sha256Hex(hashSource),
+      byteLength: event.byteLength ?? Buffer.byteLength(hashSource, 'utf8'),
+    }
   }
 
-  return {
-    ...event,
-    hash: sha256Hex(hashSource),
-  }
+  return stripFileWriteBodies(prepared, retainFileContent)
 }
 
 export async function recordNormalizedEvents(
   observer: LucidObserver,
   events: RecordableEvent[],
   context: CodexNormalizeContext,
+  retainFileContent?: boolean,
 ): Promise<{ results: RecordResult[]; context: CodexNormalizeContext }> {
   const results: RecordResult[] = []
   let ctx = { ...context, toolCallEventIds: context.toolCallEventIds ?? new Map<string, string>() }
+  const retain = retainFileContent ?? retainFileContentFromEnv()
 
   for (const draft of events) {
-    const prepared = finalizeFileWriteDraft(draft)
+    const prepared = finalizeFileWriteDraft(draft, retain)
 
     const recorded = await observer.record(prepared)
     results.push(recorded)

@@ -5,7 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { getPrimaryDisease } from '../src/departments/index.ts'
-import { createFileWriteEvent } from '../src/events.ts'
+import { createFileWriteEvent, sha256Hex } from '../src/events.ts'
 import { createObserver } from '../src/observer.ts'
 import {
   codexMessageToRecordableEvents,
@@ -96,6 +96,34 @@ test('observeCodexRun opens repeated-file-state incident from recorded stream', 
 
     const writes = result.run.events.filter((event) => event.type === 'file_write')
     assert.equal(writes.length, 3)
+    assert.deepEqual(
+      writes.map((event) => (event.type === 'file_write' ? event.content : '')),
+      [undefined, undefined, undefined],
+    )
+    assert.deepEqual(
+      writes.map((event) => (event.type === 'file_write' ? event.hash : '')),
+      [sha256Hex('state-A'), sha256Hex('state-B'), sha256Hex('state-A')],
+    )
+  } finally {
+    await rm(storeRoot, { recursive: true, force: true })
+  }
+})
+
+test('observeCodexRun retains file bodies when retainFileContent is enabled', async () => {
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-retain-'))
+  try {
+    const store = await openStore({ projectRoot: storeRoot })
+    const result = await observeCodexRun({
+      store,
+      task: 'Update auth.py and keep compatibility.',
+      cwd: storeRoot,
+      retainFileContent: true,
+      messages: authWriterLoopMessages(),
+      result: { id: 'run_codex_retain', status: 'finished' },
+      alertWriter: { write: () => {} },
+    })
+
+    const writes = result.run.events.filter((event) => event.type === 'file_write')
     assert.deepEqual(
       writes.map((event) => (event.type === 'file_write' ? event.content : '')),
       ['state-A', 'state-B', 'state-A'],
@@ -195,7 +223,8 @@ test('detector sees identical abnormality from codex adapter and manual harness'
 
     assert.ok(codexAbnormality)
     assert.ok(harnessAbnormality)
-    assert.equal(codexAbnormality.kind, harnessAbnormality.kind)
+    assert.equal(codexAbnormality.kind, 'repeated-file-state')
+    assert.equal(harnessAbnormality.kind, 'repeated-file-state')
     assert.equal(codexAbnormality.signal.file, harnessAbnormality.signal.file)
     assert.equal(codexAbnormality.signal.hash, harnessAbnormality.signal.hash)
   } finally {

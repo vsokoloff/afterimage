@@ -6,6 +6,7 @@ import test from 'node:test'
 
 import { parseRunArgv } from '../src/runtime/parse.ts'
 import { runCommand } from '../src/runtime/index.ts'
+import { sha256Hex } from '../src/events.ts'
 import { getRun, listIncidents, openStore } from '../src/store.ts'
 
 test('parseRunArgv extracts command after --', () => {
@@ -143,8 +144,15 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
     assert.ok(loopWrites.length >= 3)
 
     const contents = loopWrites.map((e) => (e.type === 'file_write' ? e.content : ''))
-    assert.ok(contents.includes('state-A'))
-    assert.ok(contents.includes('state-B'))
+    assert.ok(contents.every((value) => value === undefined))
+    const hashes = loopWrites.map((e) => (e.type === 'file_write' ? e.hash : ''))
+    assert.ok(hashes.includes(sha256Hex('state-A')))
+    assert.ok(hashes.includes(sha256Hex('state-B')))
+    assert.ok(
+      loopWrites.every(
+        (e) => e.type === 'file_write' && typeof e.byteLength === 'number',
+      ),
+    )
 
     const incidents = await listIncidents(store)
     const loopIncident = incidents.find(
@@ -192,7 +200,11 @@ test('runCommand detects loop when file already had A and process only writes B�
     )
     assert.ok(authWrites.length >= 3)
     const contents = authWrites.map((e) => (e.type === 'file_write' ? e.content : ''))
-    assert.deepEqual(contents.slice(0, 3), ['state-A', 'state-B', 'state-A'])
+    assert.ok(contents.slice(0, 3).every((value) => value === undefined))
+    assert.deepEqual(
+      authWrites.slice(0, 3).map((e) => (e.type === 'file_write' ? e.hash : '')),
+      [sha256Hex('state-A'), sha256Hex('state-B'), sha256Hex('state-A')],
+    )
 
     const incidents = await listIncidents(store)
     assert.ok(

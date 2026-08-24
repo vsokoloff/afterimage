@@ -9,6 +9,9 @@ const DEPARTMENT = 'looping'
 
 function evidenceFor(abnormality: Abnormality | null): string {
   if (!abnormality) return 'No file returned to a previous content hash.'
+  if (abnormality.kind !== 'repeated-file-state') {
+    return 'Unexpected abnormality kind for repeated-file-state disease.'
+  }
   return formatRepeatedFileStateEvidence(abnormality.signal)
 }
 

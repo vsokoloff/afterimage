@@ -1,4 +1,5 @@
 import type { LucidStore } from '../store.ts'
+import { withObservedAgentWork } from '../agents/observe-work.ts'
 import {
   ensureUmaMemorySeed,
   forgetUmaPreference,
@@ -37,54 +38,114 @@ export async function runUmaCommand(
     }
   }
 
-  if (parsed.action === 'show') {
-    const memory = await loadUmaMemory(store)
-    const entries = parsed.about
-      ? memory.entries.filter(
-          (e) => e.about.toLowerCase() === parsed.about!.toLowerCase(),
-        )
-      : memory.entries
+  const job =
+    parsed.action === 'show'
+      ? parsed.about
+        ? `uma show --about ${parsed.about}`
+        : 'uma show'
+      : parsed.action === 'remember'
+        ? `uma remember --about ${parsed.about}`
+        : parsed.id
+          ? `uma forget --id ${parsed.id}`
+          : `uma forget --about ${parsed.about}`
 
-    if (entries.length === 0) {
-      return {
-        exitCode: 0,
-        memory,
-        message: parsed.about
-          ? `Uma has no memories about "${parsed.about}" yet.`
-          : 'Uma\'s memory is empty. Tell her how you want a UI part to feel.',
+  const { result } = await withObservedAgentWork({
+    store,
+    agentId: 'uma',
+    job,
+    finishStatus: (outcome: RunUmaCommandResult) =>
+      outcome.exitCode === 0 ? 'completed' : 'failed',
+    work: async ({ record }) => {
+      if (parsed.action === 'show') {
+        const memory = await loadUmaMemory(store)
+        const entries = parsed.about
+          ? memory.entries.filter(
+              (e) => e.about.toLowerCase() === parsed.about!.toLowerCase(),
+            )
+          : memory.entries
+
+        if (entries.length === 0) {
+          const message = parsed.about
+            ? `Uma has no memories about "${parsed.about}" yet.`
+            : "Uma's memory is empty. Tell her how you want a UI part to feel."
+          await record({
+            type: 'model_response',
+            text: message,
+            reasonSummary: 'Empty memory',
+          })
+          return { exitCode: 0, memory, message }
+        }
+
+        const lines = ['Uma remembers:', '']
+        for (const entry of entries) {
+          lines.push(`[${entry.about}] ${entry.text}`)
+          lines.push(`  id: ${entry.id}`)
+        }
+        const message = lines.join('\n')
+        await record({
+          type: 'model_response',
+          text: message,
+          reasonSummary: `${entries.length} memories`,
+        })
+        return { exitCode: 0, memory, message }
       }
-    }
 
-    const lines = ['Uma remembers:', '']
-    for (const entry of entries) {
-      lines.push(`[${entry.about}] ${entry.text}`)
-      lines.push(`  id: ${entry.id}`)
-    }
-    return { exitCode: 0, memory, message: lines.join('\n') }
-  }
+      if (parsed.action === 'remember') {
+        await record({
+          type: 'tool_call',
+          toolName: 'uma.remember',
+          arguments: { about: parsed.about, text: parsed.text },
+        })
+        const { memory, entry } = await rememberUmaPreference(store, {
+          about: parsed.about,
+          text: parsed.text,
+        })
+        const message = `Uma remembered (${entry.about}): ${entry.text}`
+        await record({
+          type: 'tool_result',
+          toolName: 'uma.remember',
+          ok: true,
+          output: entry.id,
+        })
+        await record({
+          type: 'model_response',
+          text: message,
+          reasonSummary: entry.about,
+        })
+        return { exitCode: 0, memory, message }
+      }
 
-  if (parsed.action === 'remember') {
-    const { memory, entry } = await rememberUmaPreference(store, {
-      about: parsed.about,
-      text: parsed.text,
-    })
-    return {
-      exitCode: 0,
-      memory,
-      message: `Uma remembered (${entry.about}): ${entry.text}`,
-    }
-  }
-
-  const { memory, removed } = await forgetUmaPreference(store, {
-    about: parsed.about ?? undefined,
-    id: parsed.id ?? undefined,
+      await record({
+        type: 'tool_call',
+        toolName: 'uma.forget',
+        arguments: { about: parsed.about, id: parsed.id },
+      })
+      const { memory, removed } = await forgetUmaPreference(store, {
+        about: parsed.about ?? undefined,
+        id: parsed.id ?? undefined,
+      })
+      const message =
+        removed > 0
+          ? `Uma forgot ${removed} preference${removed === 1 ? '' : 's'}.`
+          : 'Uma found nothing matching that to forget.'
+      await record({
+        type: 'tool_result',
+        toolName: 'uma.forget',
+        ok: removed > 0,
+        output: { removed },
+      })
+      await record({
+        type: 'model_response',
+        text: message,
+        reasonSummary: removed > 0 ? 'Forgot' : 'Nothing to forget',
+      })
+      return {
+        exitCode: removed > 0 ? 0 : 1,
+        memory,
+        message,
+      }
+    },
   })
-  return {
-    exitCode: removed > 0 ? 0 : 1,
-    memory,
-    message:
-      removed > 0
-        ? `Uma forgot ${removed} preference${removed === 1 ? '' : 's'}.`
-        : 'Uma found nothing matching that to forget.',
-  }
+
+  return result
 }

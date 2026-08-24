@@ -1,5 +1,6 @@
 import { createObserver, type IncidentDetected, type LucidObserver } from '../../observer.ts'
 import type { FinishRunStatus } from '../../observer.ts'
+import { retainFileContentFromEnv } from '../../privacy.ts'
 import type { LucidStore } from '../../store.ts'
 import { handleIncidentDetection } from '../incident-handling.ts'
 import {
@@ -25,6 +26,11 @@ export type ObserveCodexRunOptions = {
   lucidAgentId?: string
   codexAgentId?: string
   codexRunId?: string
+  /**
+   * Persist full file bodies on `file_write` events.
+   * Defaults to `LUCID_STORE_FILE_CONTENT` (off unless set).
+   */
+  retainFileContent?: boolean
   incidentPolicy?: import('../policy.ts').RunIncidentPolicy
   webBaseUrl?: string
   onIncidentDetected?: (detection: IncidentDetected) => void
@@ -65,6 +71,11 @@ export async function observeCodexRun(
     options.createObserver?.(options.store) ?? createObserver({ store: options.store })
   const incidentPolicy = resolveRunIncidentPolicy(options.incidentPolicy)
   const webBaseUrl = resolveWebBaseUrl(options.webBaseUrl)
+  if (options.retainFileContent === true) {
+    options.store.retainFileContent = true
+  }
+  const retainFileContent =
+    options.retainFileContent ?? options.store.retainFileContent ?? retainFileContentFromEnv()
 
   let incidentsOpened = 0
   const detections: IncidentDetected[] = []
@@ -82,6 +93,7 @@ export async function observeCodexRun(
       observer,
       events,
       normalizeContext,
+      retainFileContent,
     )
     normalizeContext = context
 

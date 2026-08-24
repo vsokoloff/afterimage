@@ -57,6 +57,12 @@ test('createRun + appendEvent + getRun reloads events from disk', async () => {
       }),
     )
     assert.equal(write.type, 'file_write')
+    if (write.type === 'file_write') {
+      assert.equal(write.path, 'auth.py')
+      assert.equal(write.content, undefined)
+      assert.equal(write.contentHashInput, undefined)
+      assert.ok(write.hash)
+    }
 
     const reloaded = await getRun(store, run.id)
     assert.ok(reloaded)
@@ -66,7 +72,9 @@ test('createRun + appendEvent + getRun reloads events from disk', async () => {
     assert.equal(reloaded.events[1]?.type, 'file_write')
     if (reloaded.events[1]?.type === 'file_write') {
       assert.equal(reloaded.events[1].path, 'auth.py')
-      assert.equal(reloaded.events[1].content, 'def get_user(id): return None')
+      assert.equal(reloaded.events[1].content, undefined)
+      assert.equal(reloaded.events[1].contentHashInput, undefined)
+      assert.ok(reloaded.events[1].hash)
     }
 
     const eventsOnDisk = await readFile(
@@ -76,11 +84,43 @@ test('createRun + appendEvent + getRun reloads events from disk', async () => {
     const lines = eventsOnDisk.trim().split('\n')
     assert.equal(lines.length, 2)
     assert.match(lines[1]!, /"type":"file_write"/)
+    assert.doesNotMatch(lines[1]!, /def get_user/)
+    assert.match(lines[1]!, /"hash":/)
 
     const listed = await listRuns(store)
     assert.equal(listed.length, 1)
     assert.equal(listed[0]?.id, run.id)
     assert.equal(listed[0]?.events.length, 2)
+  })
+})
+
+test('appendEvent retains file bodies when retainFileContent is enabled', async () => {
+  await withTempStore(async (storeRoot) => {
+    const store = await openStore({ storeRoot, retainFileContent: true })
+    const run = await createRun(store, { agentId: 'auth', status: 'running' })
+    const body = 'def get_user(id): return None'
+
+    const write = await appendEvent(
+      store,
+      createFileWriteEvent({
+        id: 'fw-retain',
+        runId: run.id,
+        timestamp: '2026-08-23T20:00:00.000Z',
+        sequence: 1,
+        path: 'auth.py',
+        content: body,
+      }),
+    )
+    assert.equal(write.type, 'file_write')
+    if (write.type === 'file_write') {
+      assert.equal(write.content, body)
+    }
+
+    const eventsOnDisk = await readFile(
+      path.join(storeRoot, 'runs', `${run.id}.events.jsonl`),
+      'utf8',
+    )
+    assert.match(eventsOnDisk, /def get_user/)
   })
 })
 

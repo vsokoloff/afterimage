@@ -1,4 +1,10 @@
 export { formatAgentLabel, resolveAgentCatalog, resolveAgentRuntime } from './catalog.ts'
+export { canonicalDashboardAgentId } from './identity.ts'
+export {
+  withObservedAgentWork,
+  type ObservedAgentWorkContext,
+  type WithObservedAgentWorkOptions,
+} from './observe-work.ts'
 export {
   fetchActivity,
   fetchAgentProfile,

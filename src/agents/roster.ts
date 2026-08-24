@@ -3,6 +3,7 @@ import type { Incident } from '../incident.ts'
 import { getRun, listIncidents, listRuns, type LucidStore } from '../store.ts'
 import { loadRepoAgents } from '../workspace/store.ts'
 import { resolveAgentCatalog, resolveAgentRuntime } from './catalog.ts'
+import { canonicalDashboardAgentId } from './identity.ts'
 
 export type AgentOperationalStatus = 'working' | 'idle' | 'unhealthy' | 'stopped'
 
@@ -175,7 +176,7 @@ async function loadAgentBuckets(store: LucidStore): Promise<Map<string, AgentBuc
   }
 
   for (const run of runs) {
-    const agentId = run.agentId ?? 'unknown'
+    const agentId = canonicalDashboardAgentId(run.agentId ?? 'unknown')
     touch(agentId).runs.push(run)
   }
 
@@ -186,7 +187,7 @@ async function loadAgentBuckets(store: LucidStore): Promise<Map<string, AgentBuc
       agentId = run?.agentId
     }
     if (!agentId) continue
-    touch(agentId).incidents.push(incident)
+    touch(canonicalDashboardAgentId(agentId)).incidents.push(incident)
   }
 
   for (const bucket of buckets.values()) {
@@ -258,8 +259,10 @@ export async function fetchAgents(store: LucidStore): Promise<AgentsListResponse
 
   // Configured roster agents (Uma, Gitty, …) appear even before their first run.
   for (const agentId of Object.keys(repoAgents.agents)) {
-    if (buckets.has(agentId)) continue
-    agents.push(idleConfiguredSummary(agentId, repoAgents))
+    const id = canonicalDashboardAgentId(agentId)
+    if (buckets.has(id)) continue
+    if (agents.some((agent) => agent.id === id)) continue
+    agents.push(idleConfiguredSummary(id, repoAgents))
   }
 
   agents.sort((a, b) => {
@@ -276,10 +279,11 @@ export async function fetchAgentProfile(
 ): Promise<AgentProfileResponse | null> {
   const buckets = await loadAgentBuckets(store)
   const repoAgents = await loadRepoAgents(store)
-  const bucket = buckets.get(agentId)
+  const id = canonicalDashboardAgentId(agentId)
+  const bucket = buckets.get(id)
   if (!bucket) {
-    if (!repoAgents.agents[agentId]) return null
-    const agent = idleConfiguredSummary(agentId, repoAgents)
+    if (!repoAgents.agents[id] && !repoAgents.agents[agentId]) return null
+    const agent = idleConfiguredSummary(id, repoAgents)
     return {
       agent,
       currentRun: null,
@@ -325,7 +329,7 @@ export async function fetchActivity(
 
   for (const run of runs) {
     const loaded = run.events.length ? run : ((await getRun(store, run.id)) ?? run)
-    const agentId = loaded.agentId ?? 'unknown'
+    const agentId = canonicalDashboardAgentId(loaded.agentId ?? 'unknown')
     for (const event of loaded.events) {
       activity.push({
         id: event.id,

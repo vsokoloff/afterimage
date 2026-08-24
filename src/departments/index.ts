@@ -1,5 +1,9 @@
 import type { DepartmentInfo, DiseasePlugin } from './types.ts'
+import { costDiseases } from './cost/index.ts'
+import { instructionsDiseases } from './instructions/index.ts'
 import { loopingDiseases } from './looping/index.ts'
+import { memoryDiseases } from './memory/index.ts'
+import { scopeDiseases } from './scope/index.ts'
 
 function stubDepartment(
   id: string,
@@ -47,47 +51,6 @@ function stubDepartment(
   }
 }
 
-const memory = stubDepartment(
-  'memory',
-  'Memory',
-  'Forgotten failures, repeated research, constraint forgetting.',
-  [
-    {
-      id: 'forgotten-failures',
-      name: 'Forgotten failures',
-      description: 'Agent retries approaches that already failed in this session.',
-    },
-    {
-      id: 'repeated-research',
-      name: 'Repeated research',
-      description: 'Agent re-discovers the same facts without retaining them.',
-    },
-    {
-      id: 'constraint-forgetting',
-      name: 'Constraint forgetting',
-      description: 'Agent drops stated constraints after a few turns.',
-    },
-  ],
-)
-
-const instructions = stubDepartment(
-  'instructions',
-  'Instructions',
-  'Conflicting goals, ambiguous priority, instruction thrash.',
-  [
-    {
-      id: 'conflicting-goals',
-      name: 'Conflicting goals',
-      description: 'Two requirements cannot both be satisfied; agent oscillates.',
-    },
-    {
-      id: 'ambiguous-priority',
-      name: 'Ambiguous priority',
-      description: 'No clear ranking among competing instructions.',
-    },
-  ],
-)
-
 const tools = stubDepartment(
   'tools',
   'Tools',
@@ -111,55 +74,76 @@ const tools = stubDepartment(
   ],
 )
 
-const cost = stubDepartment(
-  'cost',
-  'Cost / Efficiency',
-  'Token explosion, rereading files, excessive retries.',
-  [
-    {
-      id: 'token-explosion',
-      name: 'Token explosion',
-      description: 'Context or output size grows without useful progress.',
-    },
-    {
-      id: 'rereading-files',
-      name: 'Rereading files',
-      description: 'Agent repeatedly reads the same file without need.',
-    },
-    {
-      id: 'excessive-retries',
-      name: 'Excessive retries',
-      description: 'Retry budget burns with no change in strategy.',
-    },
-  ],
+function departmentInfo(
+  id: string,
+  name: string,
+  description: string,
+  plugins: DiseasePlugin[],
+): DepartmentInfo {
+  return {
+    id,
+    name,
+    description,
+    diseases: plugins.map((plugin) => ({
+      id: plugin.id,
+      name: plugin.name,
+      status: plugin.status,
+      description: plugin.description,
+    })),
+  }
+}
+
+const loopingInfo = departmentInfo(
+  'looping',
+  'Looping',
+  'File-state loops, repeated tool calls, oscillation, undo/redo.',
+  loopingDiseases,
 )
 
-const loopingInfo: DepartmentInfo = {
-  id: 'looping',
-  name: 'Looping',
-  description: 'File-state loops, repeated tool calls, oscillation, undo/redo.',
-  diseases: loopingDiseases.map((plugin) => ({
-    id: plugin.id,
-    name: plugin.name,
-    status: plugin.status,
-    description: plugin.description,
-  })),
-}
+const memoryInfo = departmentInfo(
+  'memory',
+  'Memory',
+  'Forgotten failures, repeated research, constraint forgetting, prior-fix regression.',
+  memoryDiseases,
+)
+
+const instructionsInfo = departmentInfo(
+  'instructions',
+  'Instructions',
+  'Conflicting goals, ambiguous priority, instruction amnesia.',
+  instructionsDiseases,
+)
+
+const scopeInfo = departmentInfo(
+  'scope',
+  'Scope',
+  'Change blast radius and localized-task overreach.',
+  scopeDiseases,
+)
+
+const costInfo = departmentInfo(
+  'cost',
+  'Cost / Efficiency',
+  'Token explosion, rereading files, excessive retries, redundant rewrites.',
+  costDiseases,
+)
 
 const allPlugins: DiseasePlugin[] = [
   ...loopingDiseases,
-  ...memory.plugins,
-  ...instructions.plugins,
+  ...memoryDiseases,
+  ...instructionsDiseases,
+  ...scopeDiseases,
   ...tools.plugins,
-  ...cost.plugins,
+  ...costDiseases,
 ]
 
 export const departments: DepartmentInfo[] = [
   loopingInfo,
-  memory.info,
-  instructions.info,
+  memoryInfo,
+  instructionsInfo,
+  scopeInfo,
   tools.info,
-  cost.info,
+  costInfo,
 ]
 
 export function listDepartments(): DepartmentInfo[] {
@@ -185,8 +169,18 @@ export function getPrimaryDisease(): DiseasePlugin {
   return disease
 }
 
-export type { Abnormality, AgentTrace, DepartmentInfo, DiagnosisResult, DiseasePlugin, IncidentContext, TreatmentPlan, VerificationResult } from './types.ts'
-export { resolveTraceEdits, resolveTraceFileWrites } from './types.ts'
+export type {
+  Abnormality,
+  AgentTrace,
+  DepartmentInfo,
+  DiagnosisResult,
+  DiseasePlugin,
+  IncidentContext,
+  ProjectInstruction,
+  TreatmentPlan,
+  VerificationResult,
+} from './types.ts'
+export { resolveTraceEdits, resolveTraceEvents, resolveTraceFileWrites } from './types.ts'
 export { repeatedFileState } from './looping/index.ts'
 export {
   detectLoopFromFileWrites,
@@ -197,3 +191,7 @@ export {
   shortDigest,
   shortHash,
 } from './looping/index.ts'
+export { scopeExplosion } from './scope/index.ts'
+export { priorFixRegressed } from './memory/index.ts'
+export { instructionAmnesia } from './instructions/index.ts'
+export { redundantRewrite } from './cost/index.ts'

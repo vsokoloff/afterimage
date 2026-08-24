@@ -84,6 +84,10 @@ export async function observeProcess(
   const env = options.env ?? process.env
   const command = options.command
   const watchFilesystem = options.watchFilesystem ?? true
+  if (options.retainFileContent === true) {
+    options.store.retainFileContent = true
+  }
+  const retainFileContent = options.store.retainFileContent
   const incidentPolicy = resolveRunIncidentPolicy(options.incidentPolicy)
   const webBaseUrl = resolveWebBaseUrl(options.webBaseUrl)
 
@@ -116,20 +120,22 @@ export async function observeProcess(
     return result
   }
 
-  await observer.startRun({ agentId: options.agentId ?? 'subprocess' })
+  await observer.startRun({ agentId: options.agentId ?? 'gitty' })
 
   const fsWatcher = watchFilesystem
     ? createFilesystemWatcher({
         workspaceRoot: cwd,
         debounceMs: options.filesystemDebounceMs,
         watchFn: options.watchFn,
-        onWrite: async ({ path: filePath, content, hash }) => {
+        includeContent: retainFileContent,
+        onWrite: async ({ path: filePath, content, hash, byteLength }) => {
           await record({
             type: 'file_write',
             path: filePath,
-            content,
             hash,
+            byteLength,
             ok: true,
+            ...(retainFileContent && content !== undefined ? { content } : {}),
           })
         },
       })

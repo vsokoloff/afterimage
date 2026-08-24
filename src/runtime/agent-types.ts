@@ -18,6 +18,11 @@ export type AgentRuntimeObserveOptions = {
   /** Host runtime identifiers (Codex agent_id / run_id). */
   codexAgentId?: string
   codexRunId?: string
+  /**
+   * Persist full file bodies on `file_write` events.
+   * Defaults to `LUCID_STORE_FILE_CONTENT` (off unless set).
+   */
+  retainFileContent?: boolean
   incidentPolicy?: RunIncidentPolicy
   webBaseUrl?: string
   onIncidentDetected?: (detection: IncidentDetected) => void

@@ -138,6 +138,27 @@ test('createFileWriteEvent computes SHA-256 and requires content or hash input',
   )
 })
 
+test('createFileWriteEvent accepts hash-only privacy-default events', () => {
+  const hash = sha256Hex('secret-source')
+  const event = createFileWriteEvent({
+    id: 'fw-hash',
+    runId: 'run-1',
+    timestamp: '2026-08-23T12:00:00.000Z',
+    sequence: 1,
+    path: 'auth.py',
+    hash,
+    byteLength: 13,
+  })
+  assert.equal(event.content, undefined)
+  assert.equal(event.contentHashInput, undefined)
+  assert.equal(event.hash, hash)
+  assert.equal(event.byteLength, 13)
+  assertFileWriteHash(event)
+  assert.deepEqual(fileWritesToEdits([event]), [
+    { turn: 1, file: 'auth.py', content: '' },
+  ])
+})
+
 test('file write with contentHashInput only still maps to FileEdit', () => {
   const event = createFileWriteEvent({
     id: 'fw-2',

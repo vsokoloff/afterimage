@@ -11,7 +11,7 @@ import {
 import { printTrace } from './display.ts'
 import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
 import { parseRunArgv } from './runtime/parse.ts'
-import { runCommand } from './runtime/index.ts'
+import { parseOtelArgv, runCommand, startOtlpHttpServer } from './runtime/index.ts'
 import {
   resolveRunIncidentPolicy,
   resolveWebBaseUrl,
@@ -32,6 +32,7 @@ Usage:
 Commands:
   run [options] -- <cmd...>
                    Run a command under Lucid observation (persists a run)
+  otel [options]   Accept OTLP/HTTP GenAI traces → AgentEvent (local :4318)
   init             Initialize .lucid/ for this repository
   open             Open the Lucid dashboard for this repository
   attach           Stub — attach Lucid to an agent runtime
@@ -51,8 +52,17 @@ Run options:
                    Default: observe (alert only; wrapped process keeps running)
   --web-url URL    Local UI base for incident links (default: http://127.0.0.1:3000)
 
+Otel options:
+  --host H         Bind address (default: 127.0.0.1)
+  --port N         OTLP/HTTP port (default: 4318)
+  --group-by trace|conversation
+                   Correlate spans into Lucid runs (default: trace)
+  --idle-ms N      Finish run after idle gap (default: 30000)
+
   npm run lucid -- init
   npm run lucid -- open
+  npm run lucid -- otel
+  npm run lucid -- otel --port 4318 --group-by conversation
   npm run lucid -- run -- node -e "console.log('hi')"
   npm run lucid -- run --policy observe -- node ./agent.mjs
   npm run lucid -- fix inc_abc123
@@ -66,6 +76,7 @@ Run options:
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
+lucid otel accepts GenAI OTLP/HTTP JSON traces (see docs/ingestion.md).
 Gitty remembers: whenever the codebase changes, commit + explain + push + PR care (same as "gitty push").
 Uma remembers: how you want each part of the UI to look and feel.
 `
@@ -111,6 +122,41 @@ async function cmdOpen(): Promise<number> {
   console.log(`Lucid: ${url}`)
   console.log(`Workspace: ${workspace.label}`)
   console.log('Press Ctrl+C to stop.')
+  return 0
+}
+
+async function cmdOtel(): Promise<number> {
+  const parsed = parseOtelArgv(process.argv)
+  if (!parsed) {
+    console.error(
+      'Usage: npm run lucid -- otel [--host 127.0.0.1] [--port 4318] [--group-by trace|conversation] [--idle-ms 30000]',
+    )
+    return 1
+  }
+
+  const store = await openStore({ cwd: process.cwd() })
+  const server = await startOtlpHttpServer({
+    store,
+    host: parsed.host,
+    port: parsed.port,
+    groupBy: parsed.groupBy,
+    idleFinishMs: parsed.idleFinishMs,
+  })
+
+  console.log('Lucid OTEL receiver')
+  console.log(`  POST ${server.url}/v1/traces  (application/json)`)
+  console.log(`  group-by:  ${parsed.groupBy}`)
+  console.log(`  idle-ms:   ${parsed.idleFinishMs}`)
+  console.log(`  store:     ${store.root}`)
+  console.log('Press Ctrl+C to stop.')
+
+  await new Promise<void>((resolve) => {
+    const shutdown = () => {
+      void server.close().finally(resolve)
+    }
+    process.once('SIGINT', shutdown)
+    process.once('SIGTERM', shutdown)
+  })
   return 0
 }
 
@@ -161,11 +207,13 @@ function cmdDoctor(): void {
   const disease = getPrimaryDisease()
   const before = fixtureBefore()
   const abnormality = disease.detect(before)
+  const loopSignal =
+    abnormality?.kind === 'repeated-file-state' ? abnormality.signal : null
   printTrace(
     fileWritesFromAttempts('fixture-before', authWriterCase.attempts, {
       idPrefix: 'before',
     }),
-    abnormality?.signal ?? null,
+    loopSignal,
   )
   console.log()
   console.log(
@@ -184,7 +232,7 @@ function cmdInspect(): void {
   console.log(`  status:      ${diagnosis.status}`)
   console.log(`  symptom:     ${diagnosis.symptom}`)
   console.log(`  evidence:    ${diagnosis.evidence}`)
-  if (diagnosis.abnormality) {
+  if (diagnosis.abnormality?.kind === 'repeated-file-state') {
     const { signal } = diagnosis.abnormality
     console.log(`  file:        ${signal.file}`)
     console.log(`  first seen:  seq ${signal.firstSeenTurn} (${signal.firstSeenEventId})`)
@@ -329,6 +377,9 @@ async function main(): Promise<void> {
       break
     case 'run':
       process.exitCode = await cmdRun()
+      break
+    case 'otel':
+      process.exitCode = await cmdOtel()
       break
     case 'init':
       process.exitCode = await cmdInit()

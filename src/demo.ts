@@ -12,7 +12,7 @@ const before = agentTraceFromAttempts('demo', authWriterCase.attempts, { idPrefi
 const abnormality = disease.detect(before)
 printTrace(
   fileWritesFromAttempts('demo', authWriterCase.attempts, { idPrefix: 'demo' }),
-  abnormality?.signal ?? null,
+  abnormality?.kind === 'repeated-file-state' ? abnormality.signal : null,
 )
 
 function openBrowser(url: string): void {

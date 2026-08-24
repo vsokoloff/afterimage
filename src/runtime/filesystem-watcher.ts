@@ -40,8 +40,10 @@ const MAX_TEXT_BYTES = 512 * 1024
 
 export type FilesystemWritePayload = {
   path: string
-  content: string
   hash: string
+  byteLength: number
+  /** Present only when the watcher was created with `includeContent: true`. */
+  content?: string
 }
 
 export type FilesystemWatcherOptions = {
@@ -50,11 +52,17 @@ export type FilesystemWatcherOptions = {
   onWrite: (payload: FilesystemWritePayload) => Promise<void> | void
   /** Inject fs.watch (tests). */
   watchFn?: WatchFn
+  /**
+   * When true, include full UTF-8 `content` on each payload.
+   * Default false — hash + byteLength only (privacy-first).
+   */
+  includeContent?: boolean
 }
 
 type ContentPayload = {
   content: string
   hash: string
+  byteLength: number
 }
 
 /** True when a workspace-relative path should not be observed. */
@@ -114,10 +122,12 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
   const debounceMs = options.debounceMs ?? 100
   const watchImpl = options.watchFn ?? watch
   const workspaceRoot = path.resolve(options.workspaceRoot)
+  const includeContent = options.includeContent ?? false
 
   /** Baseline hashes taken at run start — not emitted until a path changes. */
   const seedHashByPath = new Map<string, string>()
   const seedContentByPath = new Map<string, string>()
+  const seedByteLengthByPath = new Map<string, number>()
   const seedEmitted = new Set<string>()
 
   /** Last hash actually delivered to onWrite. */
@@ -139,6 +149,18 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
     return path.relative(workspaceRoot, abs).replaceAll('\\', '/')
   }
 
+  const toWritePayload = (
+    relativePath: string,
+    content: string,
+    hash: string,
+    byteLength: number,
+  ): FilesystemWritePayload => ({
+    path: relativePath,
+    hash,
+    byteLength,
+    ...(includeContent ? { content } : {}),
+  })
+
   const enqueue = (relativePath: string, task: () => Promise<void>): Promise<void> => {
     const previous = pathQueues.get(relativePath) ?? Promise.resolve()
     const next = previous.then(task, task)
@@ -155,17 +177,22 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
     relativePath: string,
     content: string,
     hash: string,
+    byteLength: number,
   ): Promise<void> => {
     const seedHash = seedHashByPath.get(relativePath)
     const seedContent = seedContentByPath.get(relativePath)
+    const seedByteLength = seedByteLengthByPath.get(relativePath)
 
     if (seedHash && seedContent !== undefined && !seedEmitted.has(relativePath)) {
       if (hash !== seedHash) {
-        await options.onWrite({
-          path: relativePath,
-          content: seedContent,
-          hash: seedHash,
-        })
+        await options.onWrite(
+          toWritePayload(
+            relativePath,
+            seedContent,
+            seedHash,
+            seedByteLength ?? Buffer.byteLength(seedContent, 'utf8'),
+          ),
+        )
         lastEmittedHashByPath.set(relativePath, seedHash)
       }
       seedEmitted.add(relativePath)
@@ -173,7 +200,7 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
 
     if (lastEmittedHashByPath.get(relativePath) === hash) return
 
-    await options.onWrite({ path: relativePath, content, hash })
+    await options.onWrite(toWritePayload(relativePath, content, hash, byteLength))
     lastEmittedHashByPath.set(relativePath, hash)
   }
 
@@ -182,7 +209,11 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
     const absPath = path.join(workspaceRoot, relativePath)
     const content = await readTextualContent(absPath)
     if (content === null) return null
-    return { content, hash: sha256Hex(content) }
+    return {
+      content,
+      hash: sha256Hex(content),
+      byteLength: Buffer.byteLength(content, 'utf8'),
+    }
   }
 
   const flushPending = async (relativePath: string): Promise<void> => {
@@ -193,7 +224,7 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
     const payload = pending ?? (await readPayload(relativePath))
     if (!payload) return
 
-    await emitWrite(relativePath, payload.content, payload.hash)
+    await emitWrite(relativePath, payload.content, payload.hash, payload.byteLength)
   }
 
   /**
@@ -213,7 +244,12 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
         previous.hash !== payload.hash &&
         previous.hash !== lastEmittedHashByPath.get(relativePath)
       ) {
-        await emitWrite(relativePath, previous.content, previous.hash)
+        await emitWrite(
+          relativePath,
+          previous.content,
+          previous.hash,
+          previous.byteLength,
+        )
       }
       pendingPayload.set(relativePath, payload)
 
@@ -258,6 +294,7 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
         if (!payload) continue
         seedHashByPath.set(relativePath, payload.hash)
         seedContentByPath.set(relativePath, payload.content)
+        seedByteLengthByPath.set(relativePath, payload.byteLength)
       }
     },
 
@@ -306,10 +343,20 @@ export function createFilesystemWatcher(options: FilesystemWatcherOptions) {
           previous.hash !== payload.hash &&
           previous.hash !== lastEmittedHashByPath.get(relativePath)
         ) {
-          await emitWrite(relativePath, previous.content, previous.hash)
+          await emitWrite(
+            relativePath,
+            previous.content,
+            previous.hash,
+            previous.byteLength,
+          )
         }
         pendingPayload.delete(relativePath)
-        await emitWrite(relativePath, payload.content, payload.hash)
+        await emitWrite(
+          relativePath,
+          payload.content,
+          payload.hash,
+          payload.byteLength,
+        )
       })
     },
   }

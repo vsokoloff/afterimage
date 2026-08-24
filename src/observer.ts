@@ -1,8 +1,9 @@
 import { getShippedDiseases } from './departments/index.ts'
-import type { Abnormality, DiseasePlugin } from './departments/types.ts'
+import type { Abnormality, DiseasePlugin, ProjectInstruction } from './departments/types.ts'
 import type { AgentEvent, AgentRun, AgentRunStatus } from './events.ts'
 import { newId } from './ids.ts'
 import type { Incident } from './incident.ts'
+import { loadProjectInstructions } from './instructions/store.ts'
 import {
   appendEvent,
   createIncident,

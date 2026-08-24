@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
+import type { RecordableEvent } from '../observer.ts'
 import type { LucidStore } from '../store.ts'
+import { withObservedAgentWork } from '../agents/observe-work.ts'
 import { rememberGittyPush, type GittyHabits } from './memory.ts'
 
 const execFileAsync = promisify(execFile)
@@ -202,15 +204,35 @@ async function ensurePr(cwd: string, branch: string): Promise<string | null> {
 /**
  * Gitty push: always commit (if needed) → explain → push → take care of PRs.
  * Remembers that habit under `.lucid/gitty.json`.
+ * Always runs under Lucid observation as agent `gitty`.
  */
 export async function runGittyPush(
   options: RunGittyPushOptions,
+): Promise<RunGittyPushResult> {
+  const { result } = await withObservedAgentWork({
+    store: options.store,
+    agentId: 'gitty',
+    job: options.dryRun ? 'gitty push --dry-run' : 'gitty push',
+    finishStatus: (outcome: RunGittyPushResult) =>
+      outcome.exitCode === 0 ? 'completed' : 'failed',
+    work: async ({ record }) => runGittyPushBody(options, record),
+  })
+  return result
+}
+
+async function runGittyPushBody(
+  options: RunGittyPushOptions,
+  record: (event: RecordableEvent) => Promise<unknown>,
 ): Promise<RunGittyPushResult> {
   const cwd = options.cwd ?? process.cwd()
   const habits = await rememberGittyPush(options.store)
 
   const branchRes = await git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'])
   if (branchRes.code !== 0) {
+    await record({
+      type: 'error',
+      message: branchRes.stderr || branchRes.stdout || 'Not a git repo',
+    })
     return {
       exitCode: 1,
       habits,
@@ -237,6 +259,14 @@ export async function runGittyPush(
   const hasUpstream = aheadRes.code === 0
 
   if (toStage.length === 0 && ahead === 0 && hasUpstream) {
+    const explanation = skippedSecrets.length
+      ? `Nothing safe to commit (skipped secrets: ${skippedSecrets.join(', ')}). Already up to date with remote.`
+      : 'Working tree clean and already up to date with remote. Gitty has nothing to push.'
+    await record({
+      type: 'model_response',
+      text: explanation,
+      reasonSummary: 'Nothing to push',
+    })
     return {
       exitCode: 0,
       habits,
@@ -246,9 +276,7 @@ export async function runGittyPush(
       commitSha: null,
       branch,
       prUrl: null,
-      explanation: skippedSecrets.length
-        ? `Nothing safe to commit (skipped secrets: ${skippedSecrets.join(', ')}). Already up to date with remote.`
-        : 'Working tree clean and already up to date with remote. Gitty has nothing to push.',
+      explanation,
       skippedSecrets,
     }
   }
@@ -264,6 +292,22 @@ export async function runGittyPush(
     })
 
   if (options.dryRun) {
+    const explanation = [
+      'Dry run — Gitty would:',
+      `  1. Commit: ${commitMessage}`,
+      `  2. Stage ${toStage.length} file(s)${
+        skippedSecrets.length ? ` (skip secrets: ${skippedSecrets.join(', ')})` : ''
+      }`,
+      '  3. Push to remote',
+      '  4. Take care of any PRs',
+      '',
+      habits.push.note,
+    ].join('\n')
+    await record({
+      type: 'model_response',
+      text: explanation,
+      reasonSummary: 'Dry run',
+    })
     return {
       exitCode: 0,
       habits,
@@ -273,17 +317,7 @@ export async function runGittyPush(
       commitSha: null,
       branch,
       prUrl: null,
-      explanation: [
-        'Dry run — Gitty would:',
-        `  1. Commit: ${commitMessage}`,
-        `  2. Stage ${toStage.length} file(s)${
-          skippedSecrets.length ? ` (skip secrets: ${skippedSecrets.join(', ')})` : ''
-        }`,
-        '  3. Push to remote',
-        '  4. Take care of any PRs',
-        '',
-        habits.push.note,
-      ].join('\n'),
+      explanation,
       skippedSecrets,
     }
   }
@@ -292,7 +326,18 @@ export async function runGittyPush(
   let commitSha: string | null = null
 
   if (toStage.length > 0) {
+    await record({
+      type: 'tool_call',
+      toolName: 'git',
+      arguments: { argv: ['add', '--', ...toStage] },
+    })
     const add = await git(cwd, ['add', '--', ...toStage])
+    await record({
+      type: 'tool_result',
+      toolName: 'git',
+      ok: add.code === 0,
+      output: add.stdout || add.stderr,
+    })
     if (add.code !== 0) {
       return {
         exitCode: 1,
@@ -308,11 +353,18 @@ export async function runGittyPush(
       }
     }
 
-    const commit = await git(cwd, [
-      'commit',
-      '-m',
-      commitMessage,
-    ])
+    await record({
+      type: 'tool_call',
+      toolName: 'git',
+      arguments: { argv: ['commit', '-m', commitMessage] },
+    })
+    const commit = await git(cwd, ['commit', '-m', commitMessage])
+    await record({
+      type: 'tool_result',
+      toolName: 'git',
+      ok: commit.code === 0,
+      output: commit.stdout || commit.stderr,
+    })
     if (commit.code !== 0) {
       return {
         exitCode: 1,
@@ -333,7 +385,18 @@ export async function runGittyPush(
   }
 
   const pushArgs = hasUpstream ? ['push'] : ['push', '-u', 'origin', 'HEAD']
+  await record({
+    type: 'tool_call',
+    toolName: 'git',
+    arguments: { argv: pushArgs },
+  })
   const push = await git(cwd, pushArgs)
+  await record({
+    type: 'tool_result',
+    toolName: 'git',
+    ok: push.code === 0,
+    output: push.stdout || push.stderr,
+  })
   if (push.code !== 0) {
     return {
       exitCode: 1,
@@ -353,12 +416,27 @@ export async function runGittyPush(
   }
 
   const prUrl = await ensurePr(cwd, branch)
+  if (prUrl) {
+    await record({
+      type: 'tool_result',
+      toolName: 'gh',
+      ok: true,
+      output: prUrl,
+    })
+  }
+
   const explanation = explainChanges({
     paths: toStage.length > 0 ? toStage : ['(push only — prior local commits)'],
     commitMessage: committed ? commitMessage : '(no new commit)',
     branch,
     pushed: true,
     prUrl,
+  })
+
+  await record({
+    type: 'model_response',
+    text: explanation,
+    reasonSummary: committed ? commitMessage : 'Pushed existing commits',
   })
 
   return {

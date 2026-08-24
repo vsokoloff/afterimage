@@ -5,7 +5,7 @@ import {
   successfulFileWriteEvents,
 } from '../../../events.ts'
 import type { LoopSignal } from '../../../types.ts'
-import type { Abnormality, AgentTrace } from '../../types.ts'
+import type { AgentTrace, RepeatedFileStateAbnormality } from '../../types.ts'
 
 export function hashContent(content: string): string {
   return createHash('sha256').update(content).digest('hex')
@@ -80,7 +80,7 @@ export function detectLoopFromFileWrites(writes: FileWriteEvent[]): LoopSignal |
   return null
 }
 
-export function detectRepeatedFileState(trace: AgentTrace): Abnormality | null {
+export function detectRepeatedFileState(trace: AgentTrace): RepeatedFileStateAbnormality | null {
   const signal = detectLoopFromFileWrites(fileWritesFromTrace(trace))
   if (!signal) return null
   return { kind: 'repeated-file-state', signal }
