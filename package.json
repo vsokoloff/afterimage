@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Open-source local hospital for agents — detect failure patterns, prescribe treatments, recheck.",
   "scripts": {
     "build": "tsc",
     "demo": "npm run build && node dist/src/demo.js",
     "test": "npm run build && node --test dist/tests/*.test.js",
-    "web": "npm run build && node dist/src/server.js"
+    "web": "npm run build && node dist/src/server.js",
+    "lucid": "npm run build && node dist/src/cli.js"
+  },
+  "bin": {
+    "lucid": "./dist/src/cli.js",
+    "afterimage": "./dist/src/cli.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

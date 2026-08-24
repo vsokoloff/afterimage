@@ -6,6 +6,8 @@ import { buildVisit } from '../src/visit.ts'
 
 test('visit response keeps detector and case data separate', () => {
   const visit = buildVisit()
+  assert.equal(visit.hospital.department, 'looping')
+  assert.equal(visit.hospital.disease, 'repeated-file-state')
   assert.equal(visit.diagnosis.status, 'critical')
   assert.equal(visit.edits[0]?.shortHash, visit.edits[2]?.shortHash)
   assert.notEqual(visit.edits[0]?.shortHash, visit.edits[1]?.shortHash)
@@ -14,6 +16,7 @@ test('visit response keeps detector and case data separate', () => {
   assert.equal(visit.treatment.applied, false)
   assert.equal(visit.recheck.length, 2)
   assert.equal(new Set(visit.recheck.map((edit) => edit.shortHash)).size, 2)
+  assert.equal(visit.verification.passed, true)
 })
 
 test('serves the visit page and API', async () => {

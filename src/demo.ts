@@ -2,11 +2,13 @@ import { execFile } from 'node:child_process'
 import { platform } from 'node:os'
 
 import { authWriterCase } from './case.ts'
-import { detectLoop } from './detect-loop.ts'
+import { getPrimaryDisease } from './departments/index.ts'
 import { printTrace } from './display.ts'
 import { startServer } from './server.ts'
 
-printTrace(authWriterCase.attempts, detectLoop(authWriterCase.attempts))
+const disease = getPrimaryDisease()
+const abnormality = disease.detect({ edits: authWriterCase.attempts })
+printTrace(authWriterCase.attempts, abnormality?.signal ?? null)
 
 function openBrowser(url: string): void {
   const command = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'cmd' : 'xdg-open'
@@ -23,7 +25,7 @@ function isBusy(error: unknown): boolean {
 try {
   const { url } = await startServer()
   console.log()
-  console.log(`Visit: ${url}`)
+  console.log(`Medical record: ${url}`)
   console.log('Press Ctrl+C to stop.')
   openBrowser(url)
 } catch (error) {

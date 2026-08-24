@@ -94,8 +94,8 @@ const renderTreatment = (treatment) => {
   text(
     '#treat-applied',
     treatment.applied
-      ? 'Afterimage applied this modification.'
-      : 'Recommended treatment. Afterimage has not modified the agent.',
+      ? 'Afterimage applied this treatment to the agent.'
+      : 'Prescribed treatment (review required). Not auto-applied — this is an instruction change, not a code rewrite.',
   )
   text('#treat-target', treatment.target)
   text('#treat-change', treatment.recommendedChange)

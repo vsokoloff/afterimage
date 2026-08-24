@@ -1,10 +1,10 @@
-import { shortHash } from './detect-loop.ts'
+import { shortHash } from './departments/looping/repeated-file-state/detect.ts'
 import type { FileEdit, LoopSignal } from './types.ts'
 
 export function printTrace(edits: FileEdit[], signal: LoopSignal | null): void {
   const ordered = [...edits].sort((left, right) => left.turn - right.turn)
 
-  console.log('AFTERIMAGE / file-state trace')
+  console.log('AFTERIMAGE / Looping · repeated-file-state')
   for (const edit of ordered) {
     console.log(`turn ${edit.turn}  ${edit.file}  ${shortHash(edit.content)}`)
   }
@@ -25,7 +25,7 @@ export function printTrace(edits: FileEdit[], signal: LoopSignal | null): void {
     .map((edit) => shortHash(edit.content))
     .join(' → ')
 
-  console.log('LOOP DETECTED')
+  console.log('ABNORMALITY: repeated file state')
   console.log(
     `${signal.file} returned to its turn-${signal.firstSeenTurn} state at turn ${signal.repeatedAtTurn}.`,
   )

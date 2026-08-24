@@ -109,5 +109,5 @@ function isDirectRun(): boolean {
 
 if (isDirectRun()) {
   const { url } = await startServer()
-  console.log(`Afterimage: ${url}`)
+  console.log(`Afterimage medical record: ${url}`)
 }

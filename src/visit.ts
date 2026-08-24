@@ -1,5 +1,5 @@
 import { authWriterCase } from './case.ts'
-import { detectLoop, shortHash } from './detect-loop.ts'
+import { getPrimaryDisease, shortHash } from './departments/index.ts'
 import type { Attempt, LoopSignal, VisitCase } from './types.ts'
 
 export type EvidenceRole = 'first-seen' | 'repeated' | 'new'
@@ -10,6 +10,12 @@ export type ObservedAttempt = Attempt & {
 }
 
 export type VisitResponse = {
+  /** Medical-record metadata for this incident */
+  hospital: {
+    department: string
+    disease: string
+    pipeline: string
+  }
   patient: VisitCase['patient']
   symptom: string
   edits: ObservedAttempt[]
@@ -24,6 +30,10 @@ export type VisitResponse = {
   rootCause: VisitCase['rootCause']
   treatment: VisitCase['treatment']
   recheck: ObservedAttempt[]
+  verification: {
+    passed: boolean
+    evidence: string
+  }
 }
 
 function roleFor(edit: Attempt, signal: LoopSignal | null): EvidenceRole {
@@ -43,15 +53,38 @@ function observe(attempts: Attempt[], signal: LoopSignal | null): ObservedAttemp
     }))
 }
 
+/**
+ * Build the medical-record view for one incident.
+ * Detector decides the abnormality; case notes supply root cause + treatment.
+ */
 export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
-  const signal = detectLoop(visit.attempts)
-  const recheckSignal = detectLoop(visit.recheck)
-  const edits = observe(visit.attempts, signal)
+  const disease = getPrimaryDisease()
+  const before = { edits: visit.attempts }
+  const after = { edits: visit.recheck }
+  const context = {
+    symptom: visit.symptom,
+    rootCause: visit.rootCause,
+    treatment: visit.treatment,
+  }
+
+  const diagnosis = disease.diagnose(before, context)
+  const treatment = disease.recommendFix(diagnosis, context)
+  const verification = disease.verify(before, after)
+  const signal = diagnosis.abnormality?.signal ?? null
+  const recheckSignal =
+    verification.abnormality?.kind === 'repeated-file-state'
+      ? verification.abnormality.signal
+      : null
 
   return {
+    hospital: {
+      department: disease.department,
+      disease: disease.id,
+      pipeline: 'OBSERVE → TEST → ABNORMALITY → EVIDENCE → DIAGNOSIS → TREATMENT → RECHECK',
+    },
     patient: visit.patient,
-    symptom: visit.symptom,
-    edits,
+    symptom: diagnosis.symptom,
+    edits: observe(visit.attempts, signal),
     diagnosis: signal
       ? {
           status: 'critical',
@@ -59,7 +92,7 @@ export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
           firstSeenTurn: signal.firstSeenTurn,
           repeatedAtTurn: signal.repeatedAtTurn,
           hash: signal.hash,
-          evidence: `${signal.file} at Turn ${signal.repeatedAtTurn} exactly matches Turn ${signal.firstSeenTurn}.`,
+          evidence: diagnosis.evidence,
         }
       : {
           status: 'clear',
@@ -67,10 +100,24 @@ export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
           firstSeenTurn: null,
           repeatedAtTurn: null,
           hash: null,
-          evidence: 'No file returned to a previous state.',
+          evidence: diagnosis.evidence,
         },
-    rootCause: visit.rootCause,
-    treatment: visit.treatment,
+    rootCause: diagnosis.rootCause ?? visit.rootCause,
+    treatment: treatment
+      ? {
+          target: treatment.target,
+          recommendedChange: treatment.recommendedChange,
+          currentBehavior: treatment.currentBehavior,
+          recommendedInstruction: treatment.recommendedInstruction,
+          why: treatment.why,
+          applied: treatment.applied,
+          summaryChange: treatment.summaryChange,
+        }
+      : visit.treatment,
     recheck: observe(visit.recheck, recheckSignal),
+    verification: {
+      passed: verification.passed,
+      evidence: verification.evidence,
+    },
   }
 }
