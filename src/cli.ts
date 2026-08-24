@@ -7,7 +7,6 @@ import { authWriterCase } from './case.ts'
 import {
   getPrimaryDisease,
   listDepartments,
-  shortHash,
 } from './departments/index.ts'
 import { printTrace } from './display.ts'
 import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
@@ -19,6 +18,7 @@ import {
 } from './runtime/policy.ts'
 import { openStore } from './store.ts'
 import { parseFixArgv, runFixCommand } from './treatment/index.ts'
+import { parseRecheckArgv, runRecheckCommand } from './recheck/index.ts'
 
 const USAGE = `Lucid hospital (local)
 
@@ -34,7 +34,8 @@ Commands:
   doctor           Run Looping → repeated-file-state on the fixture
   inspect          Show evidence + diagnosis for the fixture
   fix <incident-id>  Review and optionally apply treatment for a real incident
-  recheck          Verify the post-treatment fixture trace
+  recheck <incident-id>
+                   Run reproduction + disease verify; clear only on pass
   departments      List departments and disease status
 
 Run options:
@@ -47,6 +48,7 @@ Run options:
   npm run lucid -- fix inc_abc123
   npm run lucid -- fix inc_abc123 --apply --yes
   npm run lucid -- fix inc_abc123 --rollback --yes
+  npm run lucid -- recheck inc_abc123
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
@@ -63,12 +65,6 @@ function contextFromCase() {
 function fixtureBefore() {
   return agentTraceFromAttempts('fixture-before', authWriterCase.attempts, {
     idPrefix: 'before',
-  })
-}
-
-function fixtureAfter() {
-  return agentTraceFromAttempts('fixture-after', authWriterCase.recheck, {
-    idPrefix: 'after',
   })
 }
 
@@ -180,14 +176,23 @@ async function cmdFix(): Promise<number> {
   return result.exitCode
 }
 
-function cmdRecheck(): void {
-  const disease = getPrimaryDisease()
-  const result = disease.verify(fixtureBefore(), fixtureAfter())
-  console.log('recheck')
-  console.log(`  passed:   ${result.passed ? 'yes' : 'no'}`)
-  console.log(`  evidence: ${result.evidence}`)
-  for (const edit of authWriterCase.recheck) {
-    console.log(`  turn ${edit.turn}  ${edit.file}  ${shortHash(edit.content)}`)
+async function cmdRecheck(): Promise<number> {
+  const parsed = parseRecheckArgv(process.argv)
+  if (!parsed) {
+    console.error('Usage: npm run lucid -- recheck <incident-id>')
+    return 1
+  }
+
+  const store = await openStore()
+  try {
+    const result = await runRecheckCommand({
+      incidentId: parsed.incidentId,
+      store,
+    })
+    return result.exitCode
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    return 1
   }
 }
 
@@ -243,7 +248,7 @@ async function main(): Promise<void> {
       process.exitCode = await cmdFix()
       break
     case 'recheck':
-      cmdRecheck()
+      process.exitCode = await cmdRecheck()
       break
     case 'departments':
       cmdDepartments()

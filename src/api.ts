@@ -1,6 +1,6 @@
 import { getDisease } from './departments/index.ts'
 import { shortDigest } from './departments/looping/repeated-file-state/detect.ts'
-import type { Abnormality, DiagnosisResult, VerificationResult } from './departments/types.ts'
+import type { Abnormality, DiagnosisResult } from './departments/types.ts'
 import type { AgentEvent, AgentRun, FileWriteEvent } from './events.ts'
 import { successfulFileWriteEvents } from './events.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
@@ -19,6 +19,7 @@ import {
   type LucidStore,
 } from './store.ts'
 import { recommendTreatmentFromDiagnosis, type StructuredTreatment } from './treatment/index.ts'
+import { extractReproductionFromRun } from './recheck/reproduction.ts'
 import type { RootCause } from './types.ts'
 
 export type RunsListResponse = {
@@ -66,6 +67,8 @@ export type IncidentRecheck = {
   available: boolean
   passed: boolean | null
   evidence: string
+  runId?: string
+  verifiedAt?: string
 }
 
 export type IncidentDetailResponse = {
@@ -169,23 +172,36 @@ function buildHashChain(
 }
 
 function buildRecheck(
+  incident: Incident,
   disease: ReturnType<typeof getDisease>,
   run: AgentRun | null,
   diagnosis: DiagnosisResult | null,
 ): IncidentRecheck {
+  if (incident.lastRecheck) {
+    return {
+      available: true,
+      passed: incident.lastRecheck.passed,
+      evidence: incident.lastRecheck.evidence,
+      runId: incident.lastRecheck.runId,
+      verifiedAt: incident.lastRecheck.verifiedAt,
+    }
+  }
+
   if (!disease || !run || !diagnosis?.abnormality) {
     return {
       available: false,
       passed: null,
-      evidence: 'No post-treatment run recorded yet.',
+      evidence: 'No post-treatment recheck recorded yet.',
     }
   }
 
-  const verification: VerificationResult = disease.verify({ run }, { events: [] })
+  const reproduction = extractReproductionFromRun(run)
   return {
-    available: true,
-    passed: verification.passed,
-    evidence: verification.evidence,
+    available: Boolean(reproduction),
+    passed: null,
+    evidence: reproduction
+      ? 'No recheck run recorded yet. Run `lucid recheck <incident-id>`.'
+      : 'Recheck needs a reproduction command from the original run (process_start).',
   }
 }
 
@@ -308,7 +324,7 @@ async function enrichIncident(
     rootCauseEvidenceEvents,
     diagnosticWindowEvents,
     treatment,
-    recheck: buildRecheck(disease, run, diagnosis),
+    recheck: buildRecheck(currentIncident, disease, run, diagnosis),
   }
 }
 

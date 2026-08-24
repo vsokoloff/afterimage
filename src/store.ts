@@ -227,6 +227,8 @@ export type UpdateIncidentPatch = Partial<
     | 'disease'
     | 'treatment'
     | 'treatmentApplication'
+    | 'lastRecheck'
+    | 'recheckHistory'
   >
 >
 
