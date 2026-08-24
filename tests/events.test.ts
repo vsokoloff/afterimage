@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { authWriterCase } from '../src/case.ts'
 import {
-  detectLoop,
   detectLoopFromFileWrites,
   detectRepeatedFileState,
   hashContent,
 } from '../src/departments/looping/repeated-file-state/detect.ts'
-import { resolveTraceEdits } from '../src/departments/types.ts'
+import { resolveTraceEdits, resolveTraceFileWrites } from '../src/departments/types.ts'
 import {
   assertFileWriteHash,
   createFileWriteEvent,
@@ -25,17 +23,18 @@ import {
   type ErrorEvent,
 } from '../src/events.ts'
 
-function authRunFromFixture(): AgentRun {
-  const runId = 'run-auth-fixture'
+function sampleRun(): AgentRun {
+  const runId = 'run-sample'
   const startedAt = '2026-08-23T12:00:00.000Z'
-  const writes = authWriterCase.attempts.map((attempt, index) =>
+  const contents = ['state-A', 'state-B', 'state-A']
+  const writes = contents.map((content, index) =>
     createFileWriteEvent({
       id: `fw-${index + 1}`,
       runId,
       timestamp: new Date(Date.parse(startedAt) + index * 1000).toISOString(),
-      sequence: attempt.turn,
-      path: attempt.file,
-      content: attempt.content,
+      sequence: index + 1,
+      path: 'auth.py',
+      content,
     }),
   )
 
@@ -152,36 +151,32 @@ test('file write with contentHashInput only still maps to FileEdit', () => {
   ])
 })
 
-test('AgentRun file_write events feed the existing loop detector', () => {
-  const run = authRunFromFixture()
-  const edits = editsFromAgentRun(run)
-  assert.equal(edits.length, authWriterCase.attempts.length)
-
-  const fromEdits = detectLoop(authWriterCase.attempts)
-  const fromRunEdits = detectLoop(edits)
-  const fromWrites = detectLoopFromFileWrites(
-    run.events.filter((e): e is FileWriteEvent => e.type === 'file_write'),
-  )
+test('AgentRun file_write events feed the loop detector', () => {
+  const run = sampleRun()
+  const writes = run.events.filter((e): e is FileWriteEvent => e.type === 'file_write')
+  const fromWrites = detectLoopFromFileWrites(writes)
   const fromTrace = detectRepeatedFileState({ run })
 
-  assert.ok(fromEdits)
-  assert.deepEqual(fromRunEdits, fromEdits)
-  assert.deepEqual(fromWrites, fromEdits)
+  assert.ok(fromWrites)
+  assert.equal(fromWrites.file, 'auth.py')
+  assert.equal(fromWrites.firstSeenEventId, 'fw-1')
+  assert.equal(fromWrites.repeatedEventId, 'fw-3')
   assert.ok(fromTrace)
-  assert.equal(fromTrace.kind, 'repeated-file-state')
-  assert.deepEqual(fromTrace.signal, fromEdits)
+  assert.deepEqual(fromTrace.signal, fromWrites)
+  assert.equal(editsFromAgentRun(run).length, 3)
 })
 
-test('resolveTraceEdits prefers explicit edits, then run, then events', () => {
-  const run = authRunFromFixture()
-  assert.deepEqual(resolveTraceEdits({ edits: authWriterCase.attempts }), authWriterCase.attempts)
+test('resolveTraceFileWrites reads run/events; resolveTraceEdits adapts for display', () => {
+  const run = sampleRun()
+  assert.equal(resolveTraceFileWrites({ run }).length, 3)
+  assert.equal(resolveTraceFileWrites({ events: run.events }).length, 3)
+  assert.deepEqual(resolveTraceFileWrites({}), [])
   assert.deepEqual(resolveTraceEdits({ run }), editsFromAgentRun(run))
-  assert.deepEqual(resolveTraceEdits({ events: run.events }), editsFromAgentRun(run))
   assert.deepEqual(resolveTraceEdits({}), [])
 })
 
 test('every event type carries id, runId, timestamp, and sequence', () => {
-  const run = authRunFromFixture()
+  const run = sampleRun()
   for (const event of run.events) {
     assert.equal(typeof event.id, 'string')
     assert.ok(event.id.length > 0)

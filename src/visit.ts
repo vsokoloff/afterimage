@@ -1,5 +1,6 @@
 import { authWriterCase } from './case.ts'
 import { getPrimaryDisease, shortHash } from './departments/index.ts'
+import { agentTraceFromAttempts } from './events.ts'
 import type { Attempt, LoopSignal, VisitCase } from './types.ts'
 
 export type EvidenceRole = 'first-seen' | 'repeated' | 'new'
@@ -25,6 +26,8 @@ export type VisitResponse = {
     firstSeenTurn: number | null
     repeatedAtTurn: number | null
     hash: string | null
+    firstSeenEventId: string | null
+    repeatedEventId: string | null
     evidence: string
   }
   rootCause: VisitCase['rootCause']
@@ -55,12 +58,17 @@ function observe(attempts: Attempt[], signal: LoopSignal | null): ObservedAttemp
 
 /**
  * Build the medical-record view for one incident.
- * Detector decides the abnormality; case notes supply root cause + treatment.
+ * Detector decides the abnormality from file_write events;
+ * case notes supply root cause + treatment.
  */
 export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
   const disease = getPrimaryDisease()
-  const before = { edits: visit.attempts }
-  const after = { edits: visit.recheck }
+  const before = agentTraceFromAttempts('visit-before', visit.attempts, {
+    idPrefix: 'before',
+  })
+  const after = agentTraceFromAttempts('visit-after', visit.recheck, {
+    idPrefix: 'after',
+  })
   const context = {
     symptom: visit.symptom,
     rootCause: visit.rootCause,
@@ -92,6 +100,8 @@ export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
           firstSeenTurn: signal.firstSeenTurn,
           repeatedAtTurn: signal.repeatedAtTurn,
           hash: signal.hash,
+          firstSeenEventId: signal.firstSeenEventId,
+          repeatedEventId: signal.repeatedEventId,
           evidence: diagnosis.evidence,
         }
       : {
@@ -100,6 +110,8 @@ export function buildVisit(visit: VisitCase = authWriterCase): VisitResponse {
           firstSeenTurn: null,
           repeatedAtTurn: null,
           hash: null,
+          firstSeenEventId: null,
+          repeatedEventId: null,
           evidence: diagnosis.evidence,
         },
     rootCause: diagnosis.rootCause ?? visit.rootCause,

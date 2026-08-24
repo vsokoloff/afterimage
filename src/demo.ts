@@ -4,11 +4,16 @@ import { platform } from 'node:os'
 import { authWriterCase } from './case.ts'
 import { getPrimaryDisease } from './departments/index.ts'
 import { printTrace } from './display.ts'
+import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
 import { startServer } from './server.ts'
 
 const disease = getPrimaryDisease()
-const abnormality = disease.detect({ edits: authWriterCase.attempts })
-printTrace(authWriterCase.attempts, abnormality?.signal ?? null)
+const before = agentTraceFromAttempts('demo', authWriterCase.attempts, { idPrefix: 'demo' })
+const abnormality = disease.detect(before)
+printTrace(
+  fileWritesFromAttempts('demo', authWriterCase.attempts, { idPrefix: 'demo' }),
+  abnormality?.signal ?? null,
+)
 
 function openBrowser(url: string): void {
   const command = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'cmd' : 'xdg-open'

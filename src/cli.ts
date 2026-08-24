@@ -13,6 +13,7 @@ import {
   shortHash,
 } from './departments/index.ts'
 import { printTrace } from './display.ts'
+import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
 
 const USAGE = `Afterimage hospital (local)
 
@@ -42,6 +43,18 @@ function contextFromCase() {
   }
 }
 
+function fixtureBefore() {
+  return agentTraceFromAttempts('fixture-before', authWriterCase.attempts, {
+    idPrefix: 'before',
+  })
+}
+
+function fixtureAfter() {
+  return agentTraceFromAttempts('fixture-after', authWriterCase.recheck, {
+    idPrefix: 'after',
+  })
+}
+
 function cmdStatus(): void {
   const disease = getPrimaryDisease()
   console.log('Afterimage status')
@@ -55,9 +68,14 @@ function cmdStatus(): void {
 
 function cmdDoctor(): void {
   const disease = getPrimaryDisease()
-  const before = { edits: authWriterCase.attempts }
+  const before = fixtureBefore()
   const abnormality = disease.detect(before)
-  printTrace(authWriterCase.attempts, abnormality?.signal ?? null)
+  printTrace(
+    fileWritesFromAttempts('fixture-before', authWriterCase.attempts, {
+      idPrefix: 'before',
+    }),
+    abnormality?.signal ?? null,
+  )
   console.log()
   console.log(
     abnormality
@@ -68,7 +86,7 @@ function cmdDoctor(): void {
 
 function cmdInspect(): void {
   const disease = getPrimaryDisease()
-  const diagnosis = disease.diagnose({ edits: authWriterCase.attempts }, contextFromCase())
+  const diagnosis = disease.diagnose(fixtureBefore(), contextFromCase())
   console.log('inspect')
   console.log(`  department:  ${diagnosis.department}`)
   console.log(`  disease:     ${diagnosis.disease}`)
@@ -78,8 +96,8 @@ function cmdInspect(): void {
   if (diagnosis.abnormality) {
     const { signal } = diagnosis.abnormality
     console.log(`  file:        ${signal.file}`)
-    console.log(`  first seen:  turn ${signal.firstSeenTurn}`)
-    console.log(`  repeated:    turn ${signal.repeatedAtTurn}`)
+    console.log(`  first seen:  seq ${signal.firstSeenTurn} (${signal.firstSeenEventId})`)
+    console.log(`  repeated:    seq ${signal.repeatedAtTurn} (${signal.repeatedEventId})`)
     console.log(`  hash:        ${signal.hash.slice(0, 12)}…`)
   }
   if (diagnosis.rootCause) {
@@ -90,7 +108,7 @@ function cmdInspect(): void {
 
 function cmdFix(): void {
   const disease = getPrimaryDisease()
-  const diagnosis = disease.diagnose({ edits: authWriterCase.attempts }, contextFromCase())
+  const diagnosis = disease.diagnose(fixtureBefore(), contextFromCase())
   const plan = disease.recommendFix(diagnosis, contextFromCase())
   if (!plan) {
     console.log('fix: nothing to prescribe (no abnormality).')
@@ -110,10 +128,7 @@ function cmdFix(): void {
 
 function cmdRecheck(): void {
   const disease = getPrimaryDisease()
-  const result = disease.verify(
-    { edits: authWriterCase.attempts },
-    { edits: authWriterCase.recheck },
-  )
+  const result = disease.verify(fixtureBefore(), fixtureAfter())
   console.log('recheck')
   console.log(`  passed:   ${result.passed ? 'yes' : 'no'}`)
   console.log(`  evidence: ${result.evidence}`)

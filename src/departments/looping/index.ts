@@ -3,10 +3,12 @@ import { repeatedFileState } from './repeated-file-state/index.ts'
 
 export { repeatedFileState } from './repeated-file-state/index.ts'
 export {
-  detectLoop,
   detectLoopFromFileWrites,
   detectRepeatedFileState,
+  fileWritesFromTrace,
+  formatRepeatedFileStateEvidence,
   hashContent,
+  shortDigest,
   shortHash,
 } from './repeated-file-state/detect.ts'
 

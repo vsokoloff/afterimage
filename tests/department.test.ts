@@ -6,6 +6,7 @@ import {
   getPrimaryDisease,
   listDepartments,
 } from '../src/departments/index.ts'
+import { agentTraceFromAttempts } from '../src/events.ts'
 
 test('primary disease is looping / repeated-file-state', () => {
   const disease = getPrimaryDisease()
@@ -16,8 +17,12 @@ test('primary disease is looping / repeated-file-state', () => {
 
 test('department pipeline: detect → diagnose → recommend → verify', () => {
   const disease = getPrimaryDisease()
-  const before = { edits: authWriterCase.attempts }
-  const after = { edits: authWriterCase.recheck }
+  const before = agentTraceFromAttempts('pipe-before', authWriterCase.attempts, {
+    idPrefix: 'before',
+  })
+  const after = agentTraceFromAttempts('pipe-after', authWriterCase.recheck, {
+    idPrefix: 'after',
+  })
   const context = {
     symptom: authWriterCase.symptom,
     rootCause: authWriterCase.rootCause,
@@ -27,10 +32,13 @@ test('department pipeline: detect → diagnose → recommend → verify', () => 
   const abnormality = disease.detect(before)
   assert.ok(abnormality)
   assert.equal(abnormality.kind, 'repeated-file-state')
+  assert.ok(abnormality.signal.firstSeenEventId)
+  assert.ok(abnormality.signal.repeatedEventId)
 
   const diagnosis = disease.diagnose(before, context)
   assert.equal(diagnosis.status, 'critical')
   assert.equal(diagnosis.rootCause?.title, 'Conflicting instructions')
+  assert.match(diagnosis.evidence, /^repeated-file-state file=auth\.py hash=/)
 
   const plan = disease.recommendFix(diagnosis, context)
   assert.ok(plan)

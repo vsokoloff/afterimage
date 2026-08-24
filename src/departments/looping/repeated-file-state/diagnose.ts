@@ -1,13 +1,15 @@
 import type { Abnormality, AgentTrace, DiagnosisResult, IncidentContext } from '../../types.ts'
-import { detectRepeatedFileState } from './detect.ts'
+import {
+  detectRepeatedFileState,
+  formatRepeatedFileStateEvidence,
+} from './detect.ts'
 
 const DISEASE = 'repeated-file-state'
 const DEPARTMENT = 'looping'
 
 function evidenceFor(abnormality: Abnormality | null): string {
-  if (!abnormality) return 'No file returned to a previous state.'
-  const { signal } = abnormality
-  return `${signal.file} at Turn ${signal.repeatedAtTurn} exactly matches Turn ${signal.firstSeenTurn}.`
+  if (!abnormality) return 'No file returned to a previous content hash.'
+  return formatRepeatedFileStateEvidence(abnormality.signal)
 }
 
 export function diagnose(

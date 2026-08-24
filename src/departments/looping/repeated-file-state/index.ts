@@ -4,7 +4,15 @@ import { diagnose } from './diagnose.ts'
 import { recommendFix } from './recommend.ts'
 import { verify } from './verify.ts'
 
-export { detectLoop, detectLoopFromFileWrites, detectRepeatedFileState, hashContent, shortHash } from './detect.ts'
+export {
+  detectLoopFromFileWrites,
+  detectRepeatedFileState,
+  fileWritesFromTrace,
+  formatRepeatedFileStateEvidence,
+  hashContent,
+  shortDigest,
+  shortHash,
+} from './detect.ts'
 export { diagnose } from './diagnose.ts'
 export { recommendFix } from './recommend.ts'
 export { verify } from './verify.ts'

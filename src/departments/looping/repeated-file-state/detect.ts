@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto'
 
-import type { FileEdit, LoopSignal } from '../../../types.ts'
-import type { Abnormality, AgentTrace } from '../../types.ts'
-import { resolveTraceEdits } from '../../types.ts'
 import type { FileWriteEvent } from '../../../events.ts'
-import { fileWritesToEdits } from '../../../events.ts'
+import {
+  successfulFileWriteEvents,
+} from '../../../events.ts'
+import type { LoopSignal } from '../../../types.ts'
+import type { Abnormality, AgentTrace } from '../../types.ts'
 
 export function hashContent(content: string): string {
   return createHash('sha256').update(content).digest('hex')
@@ -14,50 +15,73 @@ export function shortHash(content: string): string {
   return hashContent(content).slice(0, 6)
 }
 
-/**
- * First time one file returns to a complete content state it already had.
- * Accepts legacy FileEdit rows (fixtures) — for real runs, prefer
- * `detectLoopFromFileWrites` or pass an AgentTrace with `run` / `events`.
- */
-export function detectLoop(edits: FileEdit[]): LoopSignal | null {
-  const seenByFile = new Map<string, Map<string, number>>()
-  const ordered = [...edits].sort((left, right) => left.turn - right.turn)
+/** Short prefix of a stored SHA-256 hex digest (for display). */
+export function shortDigest(hash: string): string {
+  return hash.slice(0, 6)
+}
 
-  for (const edit of ordered) {
-    const hash = hashContent(edit.content)
-    let seen = seenByFile.get(edit.file)
+/**
+ * Collect successful file_write events from an AgentRun / AgentEvent trace.
+ * Ignores prompts, tool calls, failed writes (`ok: false`), and other event types.
+ */
+export function fileWritesFromTrace(trace: AgentTrace): FileWriteEvent[] {
+  if (trace.run) return successfulFileWriteEvents(trace.run.events)
+  if (trace.events) return successfulFileWriteEvents(trace.events)
+  return []
+}
+
+/**
+ * Deterministic evidence string for a repeated-file-state signal.
+ * Stable across machines — no locale, no LLM.
+ */
+export function formatRepeatedFileStateEvidence(signal: LoopSignal): string {
+  return [
+    'repeated-file-state',
+    `file=${signal.file}`,
+    `hash=${signal.hash}`,
+    `firstSeenEvent=${signal.firstSeenEventId}@seq=${signal.firstSeenTurn}`,
+    `repeatedEvent=${signal.repeatedEventId}@seq=${signal.repeatedAtTurn}`,
+  ].join(' ')
+}
+
+/**
+ * Detect A→B→A on successful file_write events only.
+ * Hashes are tracked per path; the same hash in different files is not a loop.
+ * Returns the earliest sequence where a file returns to a prior content hash.
+ */
+export function detectLoopFromFileWrites(writes: FileWriteEvent[]): LoopSignal | null {
+  const ordered = successfulFileWriteEvents(writes)
+  /** path → (hash → first-seen event) */
+  const seenByFile = new Map<string, Map<string, FileWriteEvent>>()
+
+  for (const write of ordered) {
+    let seen = seenByFile.get(write.path)
     if (!seen) {
       seen = new Map()
-      seenByFile.set(edit.file, seen)
+      seenByFile.set(write.path, seen)
     }
 
-    const firstSeenTurn = seen.get(hash)
-    if (firstSeenTurn !== undefined) {
+    const first = seen.get(write.hash)
+    if (first) {
       return {
         detected: true,
-        file: edit.file,
-        firstSeenTurn,
-        repeatedAtTurn: edit.turn,
-        hash,
+        file: write.path,
+        hash: write.hash,
+        firstSeenTurn: first.sequence,
+        repeatedAtTurn: write.sequence,
+        firstSeenEventId: first.id,
+        repeatedEventId: write.id,
       }
     }
 
-    seen.set(hash, edit.turn)
+    seen.set(write.hash, write)
   }
 
   return null
 }
 
-/**
- * Same A→B→A detector over file_write events from a real AgentRun.
- * Uses each event's recorded SHA-256 (and sequence as turn).
- */
-export function detectLoopFromFileWrites(writes: FileWriteEvent[]): LoopSignal | null {
-  return detectLoop(fileWritesToEdits(writes))
-}
-
 export function detectRepeatedFileState(trace: AgentTrace): Abnormality | null {
-  const signal = detectLoop(resolveTraceEdits(trace))
+  const signal = detectLoopFromFileWrites(fileWritesFromTrace(trace))
   if (!signal) return null
   return { kind: 'repeated-file-state', signal }
 }

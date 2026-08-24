@@ -7,9 +7,13 @@ export type FileEdit = {
 export type LoopSignal = {
   detected: true
   file: string
-  firstSeenTurn: number
-  repeatedAtTurn: number
   hash: string
+  /** Sequence number of the first-seen successful file_write. */
+  firstSeenTurn: number
+  /** Sequence number of the repeating successful file_write. */
+  repeatedAtTurn: number
+  firstSeenEventId: string
+  repeatedEventId: string
 }
 
 export type Feedback = {

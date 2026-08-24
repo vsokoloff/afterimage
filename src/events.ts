@@ -62,6 +62,7 @@ export type ToolResultEvent = AgentEventBase & {
 /**
  * Successful (or attempted) write of a complete file state.
  * Detector input: `path` + content-or-hash-input + resulting SHA-256.
+ * Set `ok: false` for failed writes — the loop detector ignores those.
  */
 export type FileWriteEvent = AgentEventBase & {
   type: 'file_write'
@@ -78,6 +79,8 @@ export type FileWriteEvent = AgentEventBase & {
   contentHashInput?: string
   /** SHA-256 hex digest of `content` or `contentHashInput`. */
   hash: string
+  /** Defaults to true when omitted. Failed writes are ignored by looping detect. */
+  ok?: boolean
 }
 
 export type TestResultEvent = AgentEventBase & {
@@ -130,6 +133,8 @@ export type CreateFileWriteInput = {
   /** Provide at least one of content or contentHashInput. */
   content?: string
   contentHashInput?: string
+  /** Defaults to true (successful write). */
+  ok?: boolean
 }
 
 /**
@@ -158,6 +163,7 @@ export function createFileWriteEvent(input: CreateFileWriteInput): FileWriteEven
     content: input.content,
     contentHashInput: input.contentHashInput,
     hash: sha256Hex(hashSource),
+    ok: input.ok,
   }
 }
 
@@ -165,27 +171,36 @@ export function isFileWriteEvent(event: AgentEvent): event is FileWriteEvent {
   return event.type === 'file_write'
 }
 
+/** Successful file writes only (`ok !== false`), sorted by sequence then id. */
+export function successfulFileWriteEvents(events: AgentEvent[]): FileWriteEvent[] {
+  return events
+    .filter(isFileWriteEvent)
+    .filter((event) => event.ok !== false)
+    .sort((left, right) => {
+      if (left.sequence !== right.sequence) return left.sequence - right.sequence
+      return left.id.localeCompare(right.id)
+    })
+}
+
 /** File-write events from a run, sorted by sequence. */
 export function fileWriteEventsFromRun(run: AgentRun): FileWriteEvent[] {
-  return run.events.filter(isFileWriteEvent).sort((a, b) => a.sequence - b.sequence)
+  return successfulFileWriteEvents(run.events)
 }
 
 export function fileWriteEventsFromEvents(events: AgentEvent[]): FileWriteEvent[] {
-  return events.filter(isFileWriteEvent).sort((a, b) => a.sequence - b.sequence)
+  return successfulFileWriteEvents(events)
 }
 
 /**
- * Map file-write events → legacy `FileEdit` rows for the existing loop detector.
+ * Map file-write events → legacy `FileEdit` rows (CLI / visit display).
  * `sequence` becomes `turn`; hash input becomes `content`.
  */
 export function fileWritesToEdits(writes: FileWriteEvent[]): FileEdit[] {
-  return [...writes]
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((write) => ({
-      turn: write.sequence,
-      file: write.path,
-      content: fileWriteHashInput(write),
-    }))
+  return successfulFileWriteEvents(writes).map((write) => ({
+    turn: write.sequence,
+    file: write.path,
+    content: fileWriteHashInput(write),
+  }))
 }
 
 export function editsFromAgentRun(run: AgentRun): FileEdit[] {
@@ -194,4 +209,36 @@ export function editsFromAgentRun(run: AgentRun): FileEdit[] {
 
 export function editsFromAgentEvents(events: AgentEvent[]): FileEdit[] {
   return fileWritesToEdits(fileWriteEventsFromEvents(events))
+}
+
+/**
+ * Build detector-facing file_write events from legacy attempt/edit rows
+ * (VisitCase fixtures, CLI demos). Not used inside the detector itself.
+ */
+export function fileWritesFromAttempts(
+  runId: string,
+  attempts: Array<{ turn: number; file: string; content: string }>,
+  options: { idPrefix?: string; timestamp?: string } = {},
+): FileWriteEvent[] {
+  const idPrefix = options.idPrefix ?? 'write'
+  const timestamp = options.timestamp ?? '1970-01-01T00:00:00.000Z'
+  return attempts.map((attempt) =>
+    createFileWriteEvent({
+      id: `${idPrefix}-${attempt.turn}-${attempt.file.replace(/[^\w.-]+/g, '_')}`,
+      runId,
+      timestamp,
+      sequence: attempt.turn,
+      path: attempt.file,
+      content: attempt.content,
+      ok: true,
+    }),
+  )
+}
+
+export function agentTraceFromAttempts(
+  runId: string,
+  attempts: Array<{ turn: number; file: string; content: string }>,
+  options?: { idPrefix?: string; timestamp?: string },
+): { events: FileWriteEvent[] } {
+  return { events: fileWritesFromAttempts(runId, attempts, options) }
 }
