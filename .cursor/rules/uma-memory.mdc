@@ -19,9 +19,13 @@ Uma owns UI design in this repo. Prefer these remembered preferences when changi
 
 - Agent covers: toy-like sticker mascots — thick rounded outlines, bright flat colors, simple dot eyes + smile, small oval feet. Cute anthropomorphic objects/animals (not realistic). Reference: docs/uma/inspo/agent-covers-stickers.png
 
+## nav
+
+- Nav selectors: regular compact pills, not huge tall ovals. Keep height like a normal menu row (~40px), modest padding, not oversized radius blobs.
+
 ## vibe
 
 - Overall Lucid agent UI vibe: playful, minimal, rounded, pastel/earth tones mixed with bright sticker accents — feel like a kids app for caring for agents, not a dense dashboard.
 
-_Updated 2026-08-24T14:48:34.907Z_
+_Updated 2026-08-24T15:00:24.135Z_
 

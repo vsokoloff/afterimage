@@ -119,15 +119,19 @@ input:focus-visible {
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1;
+  gap: 4px;
+  flex: 0 0 auto;
 }
 
 .nav-item {
-  padding: 10px 14px;
-  border-radius: var(--radius-pill);
+  display: block;
+  padding: 8px 12px;
+  border-radius: 10px;
   color: rgb(244 247 234 / 78%);
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.25;
+  flex: 0 0 auto;
 }
 
 .nav-item:hover {
