@@ -172,13 +172,12 @@ test('GET /api/incidents/:id returns enriched incident detail', async () => {
     assert.equal(body.diagnosis.status, 'critical')
     assert.match(body.diagnosis.evidence, /^repeated-file-state/)
 
-    assert.ok(body.treatment)
-    assert.equal(body.treatment.requiresReview, true)
-
     assert.equal(body.rootCause, null)
 
     assert.equal(body.rootCauseDiagnosis.rootCauseType, 'unknown')
     assert.deepEqual(body.rootCauseDiagnosis.evidenceEventIds, [])
+    assert.equal(body.treatment, null)
+    assert.equal(body.incident.treatment, undefined)
 
     assert.ok(body.recheck)
     assert.equal(typeof body.recheck.available, 'boolean')
@@ -207,6 +206,13 @@ test('GET /api/incidents/:id returns root-cause diagnosis with cited evidence', 
         body.diagnosticWindowEvents.some((windowEvent: { id: string }) => windowEvent.id === event.id),
       ),
     )
+    assert.ok(body.treatment)
+    assert.equal(body.treatment.target, 'instructions')
+    assert.deepEqual(body.treatment.evidenceEventIds.sort(), ['evt-inst-a', 'evt-inst-b'])
+    assert.ok(body.incident.treatment)
+    assert.equal(body.incident.treatment.target, 'instructions')
+    assert.equal(body.treatment.requiresReview, true)
+    assert.equal(body.treatment.safeToAutoApply, false)
   }, { rich: true })
 })
 

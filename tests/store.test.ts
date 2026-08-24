@@ -121,6 +121,40 @@ test('createIncident + updateIncident persist under incidents/', async () => {
   })
 })
 
+test('updateIncident persists structured treatment on incident', async () => {
+  await withTempStore(async (storeRoot) => {
+    const store = await openStore({ storeRoot })
+    const run = await createRun(store, { agentId: 'auth' })
+    const incident = await createIncident(store, {
+      runId: run.id,
+      title: 'Loop incident',
+      department: 'looping',
+      disease: 'repeated-file-state',
+    })
+
+    const treatment = {
+      target: 'instructions' as const,
+      targetComponent: 'auth.py',
+      currentProblematicState: 'Conflicting goals',
+      proposedChange: 'Resolve instruction hierarchy',
+      rationale: 'Evidence events: evt-a.',
+      riskLevel: 'medium' as const,
+      requiresReview: true,
+      safeToAutoApply: false,
+      rollbackStrategy: 'Restore prior instructions',
+      evidenceEventIds: ['evt-a'],
+      rootCauseType: 'conflicting_instructions' as const,
+    }
+
+    const updated = await updateIncident(store, incident.id, { treatment })
+    assert.deepEqual(updated.treatment, treatment)
+
+    const raw = await readFile(path.join(storeRoot, 'incidents', `${incident.id}.json`), 'utf8')
+    assert.match(raw, /"target": "instructions"/)
+    assert.match(raw, /"evidenceEventIds"/)
+  })
+})
+
 test('appendEvent fails for unknown runs', async () => {
   await withTempStore(async (storeRoot) => {
     const store = await openStore({ storeRoot })

@@ -5,6 +5,7 @@ import { constants as fsConstants } from 'node:fs'
 import type { AgentEvent, AgentRun, AgentRunStatus } from './events.ts'
 import { newId } from './ids.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
+import type { StructuredTreatment } from './treatment/types.ts'
 
 export type LucidStore = {
   /** Absolute path to the `.lucid` directory. */
@@ -171,6 +172,7 @@ export type CreateIncidentInput = {
   status?: IncidentStatus
   department?: string
   disease?: string
+  treatment?: StructuredTreatment
   createdAt?: string
 }
 
@@ -190,6 +192,7 @@ export async function createIncident(
     status: input.status ?? 'open',
     department: input.department,
     disease: input.disease,
+    treatment: input.treatment,
     createdAt: now,
     updatedAt: now,
   }
@@ -212,7 +215,7 @@ export async function getIncident(
 export type UpdateIncidentPatch = Partial<
   Pick<
     Incident,
-    'runId' | 'agentId' | 'title' | 'symptom' | 'status' | 'department' | 'disease'
+    'runId' | 'agentId' | 'title' | 'symptom' | 'status' | 'department' | 'disease' | 'treatment'
   >
 >
 

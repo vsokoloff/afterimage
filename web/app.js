@@ -245,19 +245,37 @@ function renderTreatment(treatment) {
   body.append(
     facts([
       ['Target', treatment.target],
-      ['Recommended change', treatment.recommendedChange],
-      ['Current behavior', treatment.currentBehavior],
-      ['Recommended instruction', treatment.recommendedInstruction],
-      ['Why', treatment.why],
-      ['Review', treatment.requiresReview ? 'Required' : 'Optional'],
+      ['Target component', treatment.targetComponent],
+      ['Risk level', treatment.riskLevel],
+      ['Review required', treatment.requiresReview ? 'Yes' : 'No'],
+      ['Safe to auto-apply', treatment.safeToAutoApply ? 'Yes' : 'No'],
+      ['Root cause type', treatment.rootCauseType],
+    ]),
+    el('p', 'record-copy', treatment.currentProblematicState),
+    facts([
+      ['Proposed change', treatment.proposedChange],
+      ['Rationale', treatment.rationale],
+      ['Rollback strategy', treatment.rollbackStrategy],
     ]),
   )
+
+  if (treatment.evidenceEventIds?.length) {
+    const evidenceWrap = el('div', 'root-cause-evidence')
+    evidenceWrap.append(el('h3', 'record-section-title', 'Diagnosis evidence'))
+    const list = el('ul', 'evidence-event-list')
+    for (const eventId of treatment.evidenceEventIds) {
+      list.append(el('li', 'evidence-event-item', el('code', 'mono', eventId)))
+    }
+    evidenceWrap.append(list)
+    body.append(evidenceWrap)
+  }
+
   const cli = el('pre', 'cli-block')
   cli.append(
     el('span', 'prompt', '$ '),
     el('span', 'cmd', 'npm run lucid -- fix'),
     document.createTextNode('\n'),
-    el('span', 'prompt', '# prints treatment in terminal — no web auto-patch'),
+    el('span', 'prompt', '# review treatment in terminal — auto-apply disabled'),
   )
   body.append(cli)
   return body
