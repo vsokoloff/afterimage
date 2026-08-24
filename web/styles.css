@@ -544,6 +544,28 @@ input:focus-visible {
   word-break: break-word;
 }
 
+.root-cause-evidence {
+  margin-top: 12px;
+}
+
+.evidence-event-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.evidence-event-item {
+  display: grid;
+  gap: 4px;
+}
+
+.evidence-event-copy {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .chain-legend {
   margin: 12px 0 0;
   padding: 0;

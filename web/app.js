@@ -178,19 +178,63 @@ function renderHashChain(chain) {
   return wrap
 }
 
-function renderRootCause(rootCause) {
-  if (!rootCause) {
-    return emptyState('Root cause not recorded for this run.')
+function renderRootCause(rootCauseDiagnosis, rootCauseEvidenceEvents) {
+  if (!rootCauseDiagnosis) {
+    return emptyState('Root cause not analyzed for this incident.')
   }
+
   const body = document.createElement('div')
   body.append(
-    el('p', 'record-copy', rootCause.summary),
     facts([
-      ['Title', rootCause.title],
-      ...rootCause.instructions.map((item) => [item.label, item.text]),
+      ['Type', rootCauseDiagnosis.rootCauseType],
+      ['Title', rootCauseDiagnosis.title],
+      ['Confidence', `${Math.round(rootCauseDiagnosis.confidence * 100)}%`],
+      ['Affected component', rootCauseDiagnosis.affectedComponent],
     ]),
+    el('p', 'record-copy', rootCauseDiagnosis.explanation),
   )
+
+  if (rootCauseDiagnosis.evidenceEventIds.length) {
+    const evidenceWrap = el('div', 'root-cause-evidence')
+    evidenceWrap.append(el('h3', 'record-section-title', 'Cited evidence'))
+    const list = el('ul', 'evidence-event-list')
+    for (const eventId of rootCauseDiagnosis.evidenceEventIds) {
+      const event = rootCauseEvidenceEvents.find((item) => item.id === eventId)
+      const item = el('li', 'evidence-event-item')
+      if (!event) {
+        item.textContent = `${eventId} (not loaded)`
+      } else {
+        item.append(
+          el('code', 'mono', `${event.id} · seq ${event.sequence} · ${event.type}`),
+          el('span', 'evidence-event-copy', summarizeEvent(event)),
+        )
+      }
+      list.append(item)
+    }
+    evidenceWrap.append(list)
+    body.append(evidenceWrap)
+  }
+
   return body
+}
+
+function summarizeEvent(event) {
+  switch (event.type) {
+    case 'prompt':
+      return `${event.role ?? 'prompt'}: ${event.text}`
+    case 'model_response':
+      return event.reasonSummary || event.text
+    case 'tool_result':
+      return `${event.toolName} ok=${event.ok} ${JSON.stringify(event.output ?? '')}`
+    case 'test_result':
+      return `${event.name ?? 'test'} passed=${event.passed} ${event.output ?? ''}`
+    case 'error':
+      return event.message
+    case 'file_write':
+      return `${event.path} hash=${event.hash.slice(0, 12)}`
+    default:
+      return event.type
+  }
 }
 
 function renderTreatment(treatment) {
@@ -226,7 +270,7 @@ async function renderIncidentDetail(incidentId) {
   const detail = await fetchJson(`/api/incidents/${encodeURIComponent(incidentId)}`)
   content.replaceChildren()
 
-  const { incident, run, diagnosis, rootCause, treatment, recheck, hashChain, fileStates, evidence } =
+  const { incident, run, diagnosis, rootCauseDiagnosis, rootCauseEvidenceEvents, treatment, recheck, hashChain, fileStates, evidence } =
     detail
 
   crumb.textContent = `Incidents / ${incident.title}`
@@ -351,7 +395,7 @@ async function renderIncidentDetail(incidentId) {
     ),
   )
 
-  layout.append(section('Root cause', renderRootCause(rootCause)))
+  layout.append(section('Root cause', renderRootCause(rootCauseDiagnosis, rootCauseEvidenceEvents)))
   layout.append(section('Treatment', renderTreatment(treatment)))
 
   layout.append(

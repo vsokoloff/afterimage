@@ -4,6 +4,12 @@ import type { Abnormality, DiagnosisResult, TreatmentPlan, VerificationResult } 
 import type { AgentEvent, AgentRun, FileWriteEvent } from './events.ts'
 import { successfulFileWriteEvents } from './events.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
+import {
+  diagnoseRepeatedFileStateRootCause,
+  getDefaultRootCauseProvider,
+  type RootCauseDiagnosis,
+  type RootCauseModelProvider,
+} from './root-cause/index.ts'
 import type { RootCause } from './types.ts'
 import {
   getIncident,
@@ -80,8 +86,15 @@ export type IncidentDetailResponse = {
   hashChain: HashChainStep[]
   diagnosis: IncidentDiagnosis | null
   rootCause: RootCause | null
+  rootCauseDiagnosis: RootCauseDiagnosis | null
+  rootCauseEvidenceEvents: AgentEvent[]
+  diagnosticWindowEvents: AgentEvent[]
   treatment: TreatmentPlan | null
   recheck: IncidentRecheck
+}
+
+export type ApiContext = {
+  rootCauseProvider?: RootCauseModelProvider
 }
 
 function findEvent(run: AgentRun, eventId: string): AgentEvent | undefined {
@@ -177,6 +190,7 @@ function buildRecheck(
 async function enrichIncident(
   incident: Incident,
   run: AgentRun | null,
+  context: ApiContext = {},
 ): Promise<{
   severity: 'critical' | 'clear' | 'unknown'
   evidence: string
@@ -185,6 +199,9 @@ async function enrichIncident(
   hashChain: HashChainStep[]
   diagnosis: IncidentDiagnosis | null
   rootCause: RootCause | null
+  rootCauseDiagnosis: RootCauseDiagnosis | null
+  rootCauseEvidenceEvents: AgentEvent[]
+  diagnosticWindowEvents: AgentEvent[]
   treatment: TreatmentPlan | null
   recheck: IncidentRecheck
 }> {
@@ -197,6 +214,9 @@ async function enrichIncident(
       hashChain: [],
       diagnosis: null,
       rootCause: null,
+      rootCauseDiagnosis: null,
+      rootCauseEvidenceEvents: [],
+      diagnosticWindowEvents: [],
       treatment: null,
       recheck: {
         available: false,
@@ -216,6 +236,9 @@ async function enrichIncident(
       hashChain: [],
       diagnosis: null,
       rootCause: null,
+      rootCauseDiagnosis: null,
+      rootCauseEvidenceEvents: [],
+      diagnosticWindowEvents: [],
       treatment: null,
       recheck: {
         available: false,
@@ -229,6 +252,24 @@ async function enrichIncident(
   const abnormality = diagnosis.abnormality
   const fileStates = abnormality ? fileStatesFromAbnormality(run, abnormality) : null
   const treatment = disease.recommendFix(diagnosis)
+
+  let rootCauseDiagnosis: RootCauseDiagnosis | null = null
+  let rootCauseEvidenceEvents: AgentEvent[] = []
+  let diagnosticWindowEvents: AgentEvent[] = []
+
+  if (abnormality?.kind === 'repeated-file-state') {
+    const provider = context.rootCauseProvider ?? getDefaultRootCauseProvider()
+    const rootCauseResult = await diagnoseRepeatedFileStateRootCause({
+      run,
+      abnormality,
+      triggeringEventId: abnormality.signal.repeatedEventId,
+      deterministicEvidence: diagnosis.evidence,
+      provider,
+    })
+    rootCauseDiagnosis = rootCauseResult.diagnosis
+    rootCauseEvidenceEvents = rootCauseResult.evidenceEvents
+    diagnosticWindowEvents = rootCauseResult.diagnosticWindow.events
+  }
 
   return {
     severity: diagnosis.status,
@@ -244,6 +285,9 @@ async function enrichIncident(
       evidence: diagnosis.evidence,
     },
     rootCause: diagnosis.rootCause,
+    rootCauseDiagnosis,
+    rootCauseEvidenceEvents,
+    diagnosticWindowEvents,
     treatment,
     recheck: buildRecheck(disease, run, diagnosis),
   }
@@ -252,8 +296,9 @@ async function enrichIncident(
 async function diagnoseIncident(
   incident: Incident,
   run: AgentRun | null,
+  context: ApiContext = {},
 ): Promise<{ severity: 'critical' | 'clear' | 'unknown' }> {
-  const enriched = await enrichIncident(incident, run)
+  const enriched = await enrichIncident(incident, run, context)
   return { severity: enriched.severity }
 }
 
@@ -286,12 +331,13 @@ export async function fetchIncidents(store: LucidStore): Promise<IncidentsListRe
 export async function fetchIncident(
   store: LucidStore,
   incidentId: string,
+  context: ApiContext = {},
 ): Promise<IncidentDetailResponse | null> {
   const incident = await getIncident(store, incidentId)
   if (!incident) return null
 
   const run = incident.runId ? await getRun(store, incident.runId) : null
-  const enriched = await enrichIncident(incident, run)
+  const enriched = await enrichIncident(incident, run, context)
 
   return {
     incident,
@@ -308,6 +354,9 @@ export async function fetchIncident(
     hashChain: enriched.hashChain,
     diagnosis: enriched.diagnosis,
     rootCause: enriched.rootCause,
+    rootCauseDiagnosis: enriched.rootCauseDiagnosis,
+    rootCauseEvidenceEvents: enriched.rootCauseEvidenceEvents,
+    diagnosticWindowEvents: enriched.diagnosticWindowEvents,
     treatment: enriched.treatment,
     recheck: enriched.recheck,
   }
