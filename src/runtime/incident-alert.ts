@@ -30,7 +30,11 @@ export function formatIncidentAlert(
 ): string {
   const lines: string[] = ['']
   lines.push('══════════════════════════════════════════════════════════════')
-  lines.push('🚨 Lucid detected a repeated file-state loop')
+  if (detection.abnormality.kind === 'repeated-file-state') {
+    lines.push('🚨 Lucid detected a repeated file-state loop')
+  } else {
+    lines.push(`🚨 Lucid detected ${detection.disease}`)
+  }
   lines.push('')
 
   if (detection.abnormality.kind === 'repeated-file-state') {

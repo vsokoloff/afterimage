@@ -200,7 +200,9 @@ test('GET /api/hospital/staff returns built-in staff only', async () => {
     assert.ok(Array.isArray(body.staff))
     assert.ok(body.staff.some((member: { id: string }) => member.id === 'chief'))
     assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-looping' && member.status === 'on_duty'))
-    assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-memory' && member.status === 'stub'))
+    assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-memory' && member.status === 'on_duty'))
+    assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-scope' && member.status === 'on_duty'))
+    assert.ok(body.staff.some((member: { id: string; status: string }) => member.id === 'specialist-tools' && member.status === 'stub'))
     assert.ok(
       body.staff.every(
         (member: { name: string; id: string }) =>

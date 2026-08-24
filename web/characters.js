@@ -47,6 +47,18 @@ function svgMarkup(agentId, mood) {
     kitty: kittySvg,
     gitty: kittySvg,
     uma: umaSvg,
+    // Hospital staff stickers (Uma)
+    intake: intakeSvg,
+    lab: labSvg,
+    chief: chiefSvg,
+    treatment: treatmentSvg,
+    recheck: recheckSvg,
+    'memory-doc': memoryDocSvg,
+    'instructions-doc': instructionsDocSvg,
+    'loop-doc': loopDocSvg,
+    'tools-doc': toolsDocSvg,
+    'efficiency-doc': efficiencyDocSvg,
+    'scope-doc': scopeDocSvg,
   }
   const build = builders[agentId] ?? fallbackSvg
   return build(mood)
@@ -268,6 +280,168 @@ function umaSvg(mood) {
     <circle cx="40" cy="52" r="5.5" fill="#ffe082" stroke="#1f2a37" stroke-width="2"/>
     <circle cx="50" cy="52" r="5.5" fill="#81d4fa" stroke="#1f2a37" stroke-width="2"/>
     ${face(mood, { cy: 32, eyeY: 30, mouthY: 40 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Intake — clipboard with a welcome stamp. */
+function intakeSvg(mood) {
+  return frame(
+    '#e8f6ef',
+    `
+    <rect x="24" y="14" width="32" height="44" rx="8" fill="#7dcea0" stroke="#1f2a37" stroke-width="2.5"/>
+    <rect x="28" y="20" width="24" height="30" rx="4" fill="#f4fff8" stroke="#1f2a37" stroke-width="2"/>
+    <rect x="34" y="12" width="12" height="8" rx="3" fill="#f9e79f" stroke="#1f2a37" stroke-width="2"/>
+    <circle cx="52" cy="48" r="9" fill="#81d4fa" stroke="#1f2a37" stroke-width="2.2"/>
+    <path d="M48 48l3 3 6-7" fill="none" stroke="#1f2a37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${face(mood, { cy: 32, eyeY: 30, mouthY: 40 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Lab — beaker blob. */
+function labSvg(mood) {
+  return frame(
+    '#e4f7f8',
+    `
+    <path d="M30 16h20v10l8 28c1 4-2 8-8 8H30c-6 0-9-4-8-8l8-28z" fill="#7ec8c3" stroke="#1f2a37" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M28 42h24" stroke="#1f2a37" stroke-width="2" stroke-linecap="round"/>
+    <ellipse cx="40" cy="52" rx="10" ry="5" fill="#b8ebe1"/>
+    <circle cx="34" cy="48" r="2.2" fill="#fff8e7"/>
+    <circle cx="44" cy="50" r="1.6" fill="#fff8e7"/>
+    ${face(mood, { cy: 30, eyeY: 28, mouthY: 38 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Chief — stethoscope + cream coat blob. */
+function chiefSvg(mood) {
+  return frame(
+    '#fff6e8',
+    `
+    <ellipse cx="40" cy="40" rx="22" ry="20" fill="#f5e6c8" stroke="#1f2a37" stroke-width="2.5"/>
+    <circle cx="40" cy="30" r="14" fill="#ffe8c8" stroke="#1f2a37" stroke-width="2.5"/>
+    <path d="M28 30c-6 2-10 8-8 14" fill="none" stroke="#5b8def" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="22" cy="46" r="4.5" fill="#81d4fa" stroke="#1f2a37" stroke-width="2"/>
+    <path d="M52 30c6 2 10 8 8 14" fill="none" stroke="#5b8def" stroke-width="2.6" stroke-linecap="round"/>
+    ${face(mood, { cy: 30, eyeY: 28, mouthY: 40 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Treatment — bandage roll. */
+function treatmentSvg(mood) {
+  return frame(
+    '#ffe8ef',
+    `
+    <rect x="18" y="28" width="44" height="22" rx="10" fill="#f48fb1" stroke="#1f2a37" stroke-width="2.5"/>
+    <rect x="24" y="22" width="32" height="14" rx="6" fill="#ffd1dc" stroke="#1f2a37" stroke-width="2.2"/>
+    <path d="M28 33h24M28 39h18" stroke="#fff7fb" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="56" cy="26" r="6" fill="#ffe082" stroke="#1f2a37" stroke-width="2"/>
+    ${face(mood, { cy: 36, eyeY: 34, mouthY: 44 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Recheck — nurse hat + checklist. */
+function recheckSvg(mood) {
+  return frame(
+    '#efe8ff',
+    `
+    <rect x="22" y="26" width="36" height="30" rx="8" fill="#d7b8f3" stroke="#1f2a37" stroke-width="2.5"/>
+    <path d="M26 26c0-8 6-14 14-14s14 6 14 14" fill="#faf6ff" stroke="#1f2a37" stroke-width="2.5"/>
+    <rect x="36" y="14" width="8" height="8" rx="2" fill="#f48fb1" stroke="#1f2a37" stroke-width="2"/>
+    <path d="M30 40l4 4 8-9" fill="none" stroke="#1f2a37" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${face(mood, { cy: 34, eyeY: 32, mouthY: 48 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Memory Doctor — soft brain cloud. */
+function memoryDocSvg(mood) {
+  return frame(
+    '#efe8ff',
+    `
+    <path d="M24 40c-4-10 2-20 12-20 2-6 10-8 16-4 6-4 14 0 14 8 6 0 10 6 8 12-2 8-12 14-24 14s-22-6-24-14z" fill="#b39ddb" stroke="#1f2a37" stroke-width="2.5"/>
+    <path d="M30 36c2-4 6-4 8 0M42 36c2-4 6-4 8 0" fill="none" stroke="#faf6ff" stroke-width="2" stroke-linecap="round"/>
+    ${face(mood, { cy: 36, eyeY: 34, mouthY: 46 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Instruction Doctor — scroll. */
+function instructionsDocSvg(mood) {
+  return frame(
+    '#fff6e0',
+    `
+    <path d="M26 18h28c4 0 6 3 6 6v30c0 4-3 6-6 6H26c-4 0-6-3-6-6V24c0-4 3-6 6-6z" fill="#ffe082" stroke="#1f2a37" stroke-width="2.5"/>
+    <path d="M20 24c0-4 3-6 6-6h4v36h-4c-3 0-6-2-6-6z" fill="#ffd54f" stroke="#1f2a37" stroke-width="2"/>
+    <path d="M34 30h16M34 38h14M34 46h12" stroke="#1f2a37" stroke-width="2" stroke-linecap="round"/>
+    ${face(mood, { cy: 34, eyeY: 32, mouthY: 52 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Loop Doctor — looping arrow blob. */
+function loopDocSvg(mood) {
+  return frame(
+    '#ffe8d6',
+    `
+    <circle cx="40" cy="36" r="18" fill="#f4b183" stroke="#1f2a37" stroke-width="2.5"/>
+    <path d="M28 34c2-8 14-12 22-6" fill="none" stroke="#1f2a37" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M48 26l4 4-6 1" fill="none" stroke="#1f2a37" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M52 38c-2 8-14 12-22 6" fill="none" stroke="#1f2a37" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M32 46l-4-4 6-1" fill="none" stroke="#1f2a37" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    ${face(mood, { cy: 36, eyeY: 34, mouthY: 46 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Tool Doctor — wrench sticker. */
+function toolsDocSvg(mood) {
+  return frame(
+    '#e4f7f4',
+    `
+    <path d="M28 22c6-6 14-6 18-2l-8 8 8 8-8 8c-4 4-12 4-18-2 4 0 8-2 10-4l-4-4c2-2 4-6 2-12z" fill="#6fc3b2" stroke="#1f2a37" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="52" cy="48" r="10" fill="#b8ebe1" stroke="#1f2a37" stroke-width="2.5"/>
+    ${face(mood, { cx: 52, cy: 48, eyeY: 46, mouthY: 56 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Efficiency Doctor — coin token. */
+function efficiencyDocSvg(mood) {
+  return frame(
+    '#fff6e0',
+    `
+    <circle cx="40" cy="36" r="20" fill="#f2c14e" stroke="#1f2a37" stroke-width="2.5"/>
+    <circle cx="40" cy="36" r="14" fill="#f6d978" stroke="#1f2a37" stroke-width="2"/>
+    <path d="M40 26v20M34 30h10c3 0 5 2 5 5s-2 5-5 5H34" fill="none" stroke="#1f2a37" stroke-width="2.2" stroke-linecap="round"/>
+    ${face(mood, { cy: 36, eyeY: 34, mouthY: 48 })}
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Scope Doctor — target. */
+function scopeDocSvg(mood) {
+  return frame(
+    '#e4f1ff',
+    `
+    <circle cx="40" cy="36" r="20" fill="#90caf9" stroke="#1f2a37" stroke-width="2.5"/>
+    <circle cx="40" cy="36" r="13" fill="#e4f1ff" stroke="#1f2a37" stroke-width="2.2"/>
+    <circle cx="40" cy="36" r="6" fill="#5b8def" stroke="#1f2a37" stroke-width="2"/>
+    ${face(mood, { cy: 36, eyeY: 34, mouthY: 46 })}
     ${littleFeet()}
   `,
   )

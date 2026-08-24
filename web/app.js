@@ -546,10 +546,24 @@ function staffStatusLabel(status) {
   return status === 'on_duty' ? 'On duty' : 'Not on duty yet'
 }
 
+function staffCharacter(member, size = 'md') {
+  const characterId = member.characterId ?? member.id
+  return agentCharacter(characterId, {
+    size,
+    mood: member.status === 'stub' ? 'worried' : 'cheerful',
+    title: member.name,
+  })
+}
+
 function renderStaffCard(member) {
   const item = el('li', `staff-card staff-card--${member.status}`)
-  item.append(
+  const head = el('div', 'staff-card-head')
+  head.append(
+    staffCharacter(member, 'md'),
     el('h3', 'staff-card-name', member.name),
+  )
+  item.append(
+    head,
     el('p', 'staff-card-duty', member.duty),
     el(
       'span',
@@ -575,10 +589,22 @@ function renderPatientCarePanel(detail, short) {
 
   if (careTeam) {
     const assigned = el('div', 'care-assigned')
-    assigned.append(
-      el('h3', 'care-label', 'Assigned'),
-      el('p', 'care-assigned-path', careTeam.assignedSummary),
-    )
+    assigned.append(el('h3', 'care-label', 'Assigned'))
+    const path = el('div', 'care-assigned-path')
+    const roles = [careTeam.chief, careTeam.specialist].filter(Boolean)
+    for (let i = 0; i < roles.length; i += 1) {
+      const member = roles[i]
+      const chip = el('span', 'care-staff-chip')
+      chip.append(staffCharacter(member, 'sm'), document.createTextNode(member.name))
+      path.append(chip)
+      if (i < roles.length - 1) {
+        path.append(el('span', 'care-assigned-arrow', '→'))
+      }
+    }
+    if (!roles.length) {
+      path.append(document.createTextNode(careTeam.assignedSummary))
+    }
+    assigned.append(path)
     chart.append(assigned)
   }
 

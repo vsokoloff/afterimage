@@ -1514,6 +1514,17 @@ code {
   border-radius: 20px;
 }
 
+.staff-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.staff-card-head .agent-mascot {
+  flex-shrink: 0;
+}
+
 .staff-card--stub {
   opacity: 0.78;
   border-style: dashed;
@@ -1524,6 +1535,7 @@ code {
   font-family: var(--display);
   font-size: 18px;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .staff-card-duty {
@@ -1574,9 +1586,25 @@ code {
 }
 
 .care-assigned-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-weight: 800;
   font-size: 16px;
+}
+
+.care-staff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.care-assigned-arrow {
+  color: var(--text-muted);
+  font-weight: 800;
 }
 
 .care-test-list {

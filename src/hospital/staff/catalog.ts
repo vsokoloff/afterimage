@@ -19,6 +19,8 @@ export type HospitalStaffMember = {
   stage: HospitalStaffStage
   /** Set for specialist doctors — matches department plugin id. */
   departmentId: string | null
+  /** Sticker mascot id in web/characters.js */
+  characterId: string
   status: HospitalStaffStatus
 }
 
@@ -30,6 +32,7 @@ const CORE_STAFF: Omit<HospitalStaffMember, 'status'>[] = [
     duty: 'Receives the sick agent and decides which diagnostic tests to run',
     stage: 'intake',
     departmentId: null,
+    characterId: 'intake',
   },
   {
     id: 'lab',
@@ -38,6 +41,7 @@ const CORE_STAFF: Omit<HospitalStaffMember, 'status'>[] = [
     duty: 'Runs health tests for known failure patterns',
     stage: 'lab',
     departmentId: null,
+    characterId: 'lab',
   },
   {
     id: 'chief',
@@ -46,6 +50,7 @@ const CORE_STAFF: Omit<HospitalStaffMember, 'status'>[] = [
     duty: 'Diagnoses agent failures from lab results',
     stage: 'chief',
     departmentId: null,
+    characterId: 'chief',
   },
   {
     id: 'treatment',
@@ -54,6 +59,7 @@ const CORE_STAFF: Omit<HospitalStaffMember, 'status'>[] = [
     duty: 'Applies the approved fix when you run lucid fix',
     stage: 'treatment',
     departmentId: null,
+    characterId: 'treatment',
   },
   {
     id: 'recheck',
@@ -62,6 +68,7 @@ const CORE_STAFF: Omit<HospitalStaffMember, 'status'>[] = [
     duty: 'Reruns tests after treatment and clears healthy agents',
     stage: 'recheck',
     departmentId: null,
+    characterId: 'recheck',
   },
 ]
 
@@ -71,6 +78,7 @@ const SPECIALIST_DEFS: Array<{
   title: string
   duty: string
   departmentId: string
+  characterId: string
 }> = [
   {
     id: 'specialist-memory',
@@ -78,6 +86,7 @@ const SPECIALIST_DEFS: Array<{
     title: 'Memory',
     duty: 'Treats memory and retrieval problems',
     departmentId: 'memory',
+    characterId: 'memory-doc',
   },
   {
     id: 'specialist-instructions',
@@ -85,6 +94,7 @@ const SPECIALIST_DEFS: Array<{
     title: 'Instructions',
     duty: 'Treats prompt and instruction conflicts',
     departmentId: 'instructions',
+    characterId: 'instructions-doc',
   },
   {
     id: 'specialist-looping',
@@ -92,6 +102,7 @@ const SPECIALIST_DEFS: Array<{
     title: 'Looping',
     duty: 'Treats repeated-behavior loops',
     departmentId: 'looping',
+    characterId: 'loop-doc',
   },
   {
     id: 'specialist-tools',
@@ -99,6 +110,7 @@ const SPECIALIST_DEFS: Array<{
     title: 'Tools',
     duty: 'Treats tool-use failures',
     departmentId: 'tools',
+    characterId: 'tools-doc',
   },
   {
     id: 'specialist-cost',
@@ -106,6 +118,15 @@ const SPECIALIST_DEFS: Array<{
     title: 'Efficiency',
     duty: 'Treats token and retry waste',
     departmentId: 'cost',
+    characterId: 'efficiency-doc',
+  },
+  {
+    id: 'specialist-scope',
+    name: 'Scope Doctor',
+    title: 'Scope',
+    duty: 'Treats change blast-radius and localized-task overreach',
+    departmentId: 'scope',
+    characterId: 'scope-doc',
   },
 ]
 
@@ -133,6 +154,7 @@ export function listHospitalStaff(): HospitalStaffMember[] {
         duty: def.duty,
         stage: 'specialist',
         departmentId: def.departmentId,
+        characterId: def.characterId,
       },
       departmentHasShippedDisease(def.departmentId) ? 'on_duty' : 'stub',
     ),

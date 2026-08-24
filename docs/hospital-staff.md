@@ -47,6 +47,8 @@ Agent returns to work
 
 Specialists with only stub diseases show as **Not on duty yet**. Loop Doctor is **on duty** because `repeated-file-state` is shipped.
 
+Each staff member has a Uma sticker mascot (`characterId`) shown on the Hospital roster and on patient care charts.
+
 ## Contribute
 
 1. **New lab test / disease** — add `src/departments/<dept>/<disease>/` with detect → diagnose → recommend → verify, register it, set `status: 'shipped'` when ready.

@@ -50,12 +50,17 @@ test('department pipeline: detect → diagnose → recommend → verify', () => 
   assert.equal(verification.passed, true)
 })
 
-test('registry lists five departments with only one shipped disease', () => {
+test('registry lists six departments with five shipped diseases', () => {
   const departments = listDepartments()
-  assert.equal(departments.length, 5)
+  assert.equal(departments.length, 6)
   const shipped = departments.flatMap((dept) =>
     dept.diseases.filter((disease) => disease.status === 'shipped'),
   )
-  assert.equal(shipped.length, 1)
-  assert.equal(shipped[0]?.id, 'repeated-file-state')
+  assert.equal(shipped.length, 5)
+  const shippedIds = new Set(shipped.map((disease) => disease.id))
+  assert.ok(shippedIds.has('repeated-file-state'))
+  assert.ok(shippedIds.has('scope-explosion'))
+  assert.ok(shippedIds.has('prior-fix-regressed'))
+  assert.ok(shippedIds.has('instruction-amnesia'))
+  assert.ok(shippedIds.has('redundant-rewrite'))
 })

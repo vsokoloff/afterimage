@@ -51,25 +51,75 @@ export type RecordableEvent = {
 
 
 function abnormalityKey(disease: DiseasePlugin, abnormality: Abnormality): string {
-  if (abnormality.kind === 'repeated-file-state') {
-    const signal = abnormality.signal
-    return [
-      disease.department,
-      disease.id,
-      signal.file,
-      signal.hash,
-      signal.firstSeenEventId,
-      signal.repeatedEventId,
-    ].join(':')
+  const prefix = `${disease.department}:${disease.id}`
+  switch (abnormality.kind) {
+    case 'repeated-file-state': {
+      const signal = abnormality.signal
+      return [
+        prefix,
+        signal.file,
+        signal.hash,
+        signal.firstSeenEventId,
+        signal.repeatedEventId,
+      ].join(':')
+    }
+    case 'scope-explosion': {
+      const signal = abnormality.signal
+      return [
+        prefix,
+        signal.reason,
+        String(signal.fileCount),
+        signal.paths.join(','),
+        signal.triggeringEventId,
+      ].join(':')
+    }
+    case 'prior-fix-regressed': {
+      const signal = abnormality.signal
+      return [
+        prefix,
+        signal.testName,
+        signal.firstPassEventId,
+        signal.laterFailEventId,
+      ].join(':')
+    }
+    case 'instruction-amnesia': {
+      const signal = abnormality.signal
+      return [
+        prefix,
+        signal.constraintId,
+        signal.violatingEventId,
+      ].join(':')
+    }
+    case 'redundant-rewrite': {
+      const signal = abnormality.signal
+      return [
+        prefix,
+        signal.matchKind,
+        signal.hash,
+        signal.firstEventId,
+        signal.duplicateEventId,
+      ].join(':')
+    }
+    default:
+      return `${prefix}:${JSON.stringify(abnormality)}`
   }
-  return `${disease.department}:${disease.id}:${JSON.stringify(abnormality)}`
 }
 
 function incidentTitle(disease: DiseasePlugin, abnormality: Abnormality): string {
-  if (abnormality.kind === 'repeated-file-state') {
-    return `${disease.name}: ${abnormality.signal.file} returned to a prior content hash`
+  switch (abnormality.kind) {
+    case 'repeated-file-state':
+      return `${disease.name}: ${abnormality.signal.file} returned to a prior content hash`
+    case 'scope-explosion':
+      return `${disease.name}: ${abnormality.signal.fileCount} files across ${abnormality.signal.topLevelDirs.length} directories`
+    case 'prior-fix-regressed':
+      return `${disease.name}: ${abnormality.signal.testName} failed after previously passing`
+    case 'instruction-amnesia':
+      return `${disease.name}: violated “${abnormality.signal.constraintText}”`
+    case 'redundant-rewrite':
+      return `${disease.name}: ${abnormality.signal.duplicatePath} duplicates ${abnormality.signal.firstPath}`
+    default:
+      return `${disease.name}: abnormality detected`
   }
-  return `${disease.name}: abnormality detected`
 }
 
 /**
@@ -83,6 +133,8 @@ export class LucidObserver {
   private nextSequence = 1
   /** Abnormalities already turned into incidents for the active run. */
   private seenKeys = new Set<string>()
+  /** Local project instructions loaded at run start for instruction-amnesia. */
+  private projectInstructions: ProjectInstruction[] = []
 
   constructor(options: ObserverOptions) {
     this.store = options.store
@@ -101,6 +153,7 @@ export class LucidObserver {
     this.active = run
     this.nextSequence = 1
     this.seenKeys = new Set()
+    this.projectInstructions = await loadProjectInstructions(this.store)
     return this.run!
   }
 
@@ -137,15 +190,20 @@ export class LucidObserver {
       events: [...this.active.events],
     }
 
+    const trace = {
+      run: runSnapshot,
+      projectInstructions: this.projectInstructions,
+    }
+
     const detections: IncidentDetected[] = []
     for (const disease of this.diseases) {
-      const abnormality = disease.detect({ run: runSnapshot })
+      const abnormality = disease.detect(trace)
       if (!abnormality) continue
 
       const key = abnormalityKey(disease, abnormality)
       if (this.seenKeys.has(key)) continue
 
-      const diagnosis = disease.diagnose({ run: runSnapshot })
+      const diagnosis = disease.diagnose(trace)
       const evidence = diagnosis.evidence
       const incident = await createIncident(this.store, {
         runId: runSnapshot.id,
@@ -189,6 +247,7 @@ export class LucidObserver {
     this.active = null
     this.nextSequence = 1
     this.seenKeys = new Set()
+    this.projectInstructions = []
     return finished
   }
 }
