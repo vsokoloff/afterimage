@@ -1,8 +1,8 @@
 # Afterimage architecture
 
-Afterimage (product surface: **Lucid**) is a **local agent command center** with a **Hospital** plugin runtime for failure patterns.
+Afterimage (product surface: **Lucid**) is a **local incidents + Hospital** tool for agent failure patterns.
 
-The website is the command center + medical record UI. Detection and treatment live in the terminal / department plugins.
+The website starts on **open incidents** and opens Hospital diagnostics directly. Detection and treatment live in the terminal / department plugins.
 
 ## Local-first
 
@@ -17,14 +17,14 @@ SPA with sidebar:
 
 ```text
 Lucid
-Agents (default) · Activity · Hospital · Memory
+Incidents (default) · Agents · Activity · Memory
 ———
 System: ✓ Lucid running
 ```
 
-- **Agents** — search, deterministic task routing suggestions, agent cards, profiles
-- **Agent Hospital** — progressive tests → diagnosis → root cause → treatment + `lucid fix` CLI → recheck → cleared
-- **Hospital overview** — needs attention / recently treated
+- **Incidents** — open failures first; click opens Hospital diagnostics (no Agents → View → Send gate)
+- **Hospital visit** — progressive tests → diagnosis → root cause → treatment + `lucid fix` CLI → recheck → cleared → back to Incidents
+- **Agents** — optional roster / routing (secondary)
 - **Activity** — chronological feed
 - **Memory** — cross-agent learned lessons
 

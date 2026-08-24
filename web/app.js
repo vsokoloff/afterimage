@@ -46,33 +46,57 @@ function el(tag, className, text) {
 }
 
 function parseRoute() {
-  const raw = (location.hash || '#/agents').replace(/^#/, '')
+  const raw = (location.hash || '#/incidents').replace(/^#/, '')
   const parts = raw.split('/').filter(Boolean)
-  const page = parts[0] || 'agents'
+  const page = parts[0] || 'incidents'
 
+  if (page === 'incidents' && parts[1]) {
+    return { page: 'incident', agentId: parts[1] }
+  }
+  if (page === 'incidents' || page === 'hospital') {
+    return { page: 'incidents' }
+  }
   if (page === 'agents' && parts[1] && parts[2] === 'hospital') {
-    return { page: 'agent-hospital', agentId: parts[1] }
+    return { page: 'incident', agentId: parts[1] }
   }
   if (page === 'agents' && parts[1]) {
     return { page: 'agent', agentId: parts[1] }
   }
-  if (page === 'hospital') return { page: 'hospital' }
+  if (page === 'agents') return { page: 'agents' }
   if (page === 'activity') return { page: 'activity' }
   if (page === 'memory') return { page: 'memory' }
-  return { page: 'agents' }
+  return { page: 'incidents' }
 }
 
 function setActiveNav(route) {
   const key =
-    route.page === 'agent' || route.page === 'agent-hospital' || route.page === 'agents'
-      ? route.page === 'agent-hospital'
-        ? 'hospital'
-        : 'agents'
-      : route.page
+    route.page === 'incident' || route.page === 'incidents'
+      ? 'incidents'
+      : route.page === 'agent' || route.page === 'agents'
+        ? 'agents'
+        : route.page
 
   nav.querySelectorAll('.nav-item').forEach((link) => {
     link.classList.toggle('is-active', link.dataset.route === key)
   })
+}
+
+/** Open an incident straight into Hospital diagnostics (no Agents → View gate). */
+function openIncident(agent) {
+  if (agent.status !== 'cleared' && agent.status !== 'in_hospital') {
+    agent.status = 'in_hospital'
+    agent.currentActivity = 'Admitted to Hospital for diagnostics'
+    pushActivity(`${agent.name} opened from Incidents`, agent.id)
+  }
+  location.hash = `#/incidents/${agent.id}`
+}
+
+function openIncidents() {
+  const open = agents.filter((a) =>
+    a.hospitalEligible && ['critical', 'degraded', 'in_hospital'].includes(a.status),
+  )
+  const recent = agents.filter((a) => a.hospitalEligible && a.status === 'cleared')
+  return { open, recent }
 }
 
 function getAgent(id) {
@@ -196,6 +220,93 @@ function facts(rows) {
 
 /* ─── Pages ─── */
 
+async function renderIncidentsPage() {
+  crumb.textContent = 'Incidents'
+  content.replaceChildren()
+
+  const head = el('div', 'page-head')
+  head.append(
+    el('h1', '', 'Incidents'),
+    el('p', '', 'Open failures first. Open one to run Hospital diagnostics — no Agents browsing required.'),
+  )
+
+  const { open, recent } = openIncidents()
+  const list = el('div', 'incident-list')
+
+  if (!open.length && !recent.length) {
+    list.append(el('p', 'empty', 'No hospital-eligible incidents right now.'))
+    content.append(head, list)
+    return
+  }
+
+  if (open.length) {
+    list.append(el('h2', 'incident-group-title', 'Needs attention'))
+    for (const agent of open) {
+      list.append(await incidentCard(agent))
+    }
+  }
+
+  if (recent.length) {
+    list.append(el('h2', 'incident-group-title', 'Recently cleared'))
+    for (const agent of recent) {
+      list.append(await incidentCard(agent))
+    }
+  }
+
+  content.append(head, list)
+}
+
+async function incidentCard(agent) {
+  const card = el('button', 'incident-card', '')
+  card.type = 'button'
+  card.addEventListener('click', () => openIncident(agent))
+
+  const top = el('div', 'incident-card-top')
+  const identity = el('div', 'agent-card-identity')
+  identity.append(
+    agentCharacter(agent.id, { size: 'md', mood: characterMood(agent) }),
+    (() => {
+      const text = document.createElement('div')
+      text.append(
+        el('h2', '', agent.name),
+        el('p', 'role', agent.currentActivity),
+      )
+      return text
+    })(),
+  )
+  top.append(identity, statusBadge(agent.status))
+  card.append(top)
+
+  let symptom = agent.healthByDepartment.find((d) => d.status === 'abnormal')?.note
+    ?? agent.currentActivity
+  if (agent.usesRealVisit) {
+    try {
+      const visit = await loadVisit(agent.id)
+      symptom = visit.symptom
+      card.append(
+        el(
+          'p',
+          'incident-meta',
+          `${visit.hospital.department} / ${visit.hospital.disease}`,
+        ),
+      )
+    } catch {
+      /* list still works without visit */
+    }
+  } else {
+    card.append(el('p', 'incident-meta', 'Mock hospital path'))
+  }
+
+  card.append(el('p', 'incident-symptom', symptom))
+
+  const foot = el('div', 'incident-card-foot')
+  foot.append(
+    el('span', 'btn btn-ghost', agent.status === 'cleared' ? 'Open record' : 'Open diagnostics'),
+  )
+  card.append(foot)
+  return card
+}
+
 function renderAgentsPage() {
   crumb.textContent = 'Agents'
   content.replaceChildren()
@@ -203,7 +314,7 @@ function renderAgentsPage() {
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Agents'),
-    el('p', '', 'Local command center. Route work, inspect health, send broken agents to Hospital.'),
+    el('p', '', 'Optional roster. For broken agents, start from Incidents instead.'),
   )
 
   const routeBox = el('div', 'route-box')
@@ -353,20 +464,15 @@ function renderAgentProfile(agentId) {
   actions.append(back)
 
   if (agent.hospitalEligible && agent.status !== 'cleared') {
-    const send = el('button', 'btn btn-primary', 'Send to Hospital')
+    const send = el('button', 'btn btn-primary', 'Open incident')
     send.type = 'button'
-    send.addEventListener('click', () => {
-      agent.status = 'in_hospital'
-      agent.currentActivity = 'Admitted to Hospital for diagnostics'
-      pushActivity(`${agent.name} sent to Hospital`, agent.id)
-      location.hash = `#/agents/${agent.id}/hospital`
-    })
+    send.addEventListener('click', () => openIncident(agent))
     actions.append(send)
   } else if (agent.status === 'cleared') {
-    const again = el('button', 'btn', 'Open Hospital record')
+    const again = el('button', 'btn', 'Open incident record')
     again.type = 'button'
     again.addEventListener('click', () => {
-      location.hash = `#/agents/${agent.id}/hospital`
+      location.hash = `#/incidents/${agent.id}`
     })
     actions.append(again)
   }
@@ -448,11 +554,16 @@ function memoryBlock(title, items) {
 async function renderHospitalVisit(agentId) {
   const agent = getAgent(agentId)
   if (!agent) {
-    location.hash = '#/agents'
+    location.hash = '#/incidents'
     return
   }
 
-  crumb.textContent = `Hospital / ${agent.name}`
+  if (agent.hospitalEligible && agent.status !== 'cleared' && agent.status !== 'in_hospital') {
+    agent.status = 'in_hospital'
+    agent.currentActivity = 'Admitted to Hospital for diagnostics'
+  }
+
+  crumb.textContent = `Incidents / ${agent.name}`
   content.replaceChildren()
   const layout = el('div', 'hospital-layout')
   content.append(layout)
@@ -532,10 +643,10 @@ function renderMockHospital(agent, state, layout) {
     ),
     el('p', 'notice', 'Mock only — do not treat as a real diagnosis.'),
   )
-  const back = el('button', 'btn', 'Return to agent')
+  const back = el('button', 'btn', '← Incidents')
   back.type = 'button'
   back.addEventListener('click', () => {
-    location.hash = `#/agents/${agent.id}`
+    location.hash = '#/incidents'
   })
   const actions = el('div', 'actions')
   actions.append(back)
@@ -767,7 +878,7 @@ async function renderAuthHospital(agent, state, visit, layout) {
     if (state.step === 'cleared') {
       panel.append(
         el('p', 'panel-title', 'Cleared'),
-        el('p', 'panel-sub', `${agent.name} returned to the command center with restored health.`),
+        el('p', 'panel-sub', `${agent.name} returned to Incidents with restored health.`),
         el('p', 'notice notice--ok', 'Health restored. New lesson written to agent memory.'),
       )
       panel.append(
@@ -778,10 +889,10 @@ async function renderAuthHospital(agent, state, visit, layout) {
         ]),
       )
       const actions = el('div', 'actions')
-      const back = el('button', 'btn btn-primary', 'Return to agent')
+      const back = el('button', 'btn btn-primary', 'Back to Incidents')
       back.type = 'button'
       back.addEventListener('click', () => {
-        location.hash = `#/agents/${agent.id}`
+        location.hash = '#/incidents'
       })
       actions.append(back)
       panel.append(actions)
@@ -860,60 +971,6 @@ function clearAgent(agent, visit) {
     ...agent.memory.successes,
   ]
   pushActivity(`${agent.name} cleared from Hospital — health restored`, agent.id)
-}
-
-function renderHospitalOverview() {
-  crumb.textContent = 'Hospital'
-  content.replaceChildren()
-
-  const head = el('div', 'page-head')
-  head.append(
-    el('h1', '', 'Hospital'),
-    el('p', '', 'Agents that need attention, and those recently treated.'),
-  )
-
-  const needs = agents.filter((a) =>
-    ['critical', 'degraded', 'in_hospital'].includes(a.status),
-  )
-  const treated = agents.filter((a) => a.status === 'cleared')
-
-  const grid = el('div', 'split-two')
-  grid.append(
-    overviewColumn('Needs attention', needs, 'Everyone looks fine.'),
-    overviewColumn('Recently treated', treated, 'No discharges yet.'),
-  )
-  content.append(head, grid)
-}
-
-function overviewColumn(title, list, emptyText) {
-  const section = el('section', 'section')
-  section.append(el('h2', '', title))
-  if (!list.length) {
-    section.append(el('p', 'empty', emptyText))
-    return section
-  }
-  const items = el('ul', 'dept-list')
-  for (const agent of list) {
-    const li = el('li', 'dept-item')
-    const top = el('div', 'dept-item-top')
-    const nameRow = el('div', 'list-agent')
-    nameRow.append(
-      agentCharacter(agent.id, { size: 'sm', mood: characterMood(agent) }),
-      (() => {
-        const link = el('a', 'dept-name', agent.name)
-        link.href =
-          agent.status === 'in_hospital' || agent.status === 'cleared'
-            ? `#/agents/${agent.id}/hospital`
-            : `#/agents/${agent.id}`
-        return link
-      })(),
-    )
-    top.append(nameRow, statusBadge(agent.status))
-    li.append(top, el('p', 'dept-note', agent.currentActivity))
-    items.append(li)
-  }
-  section.append(items)
-  return section
 }
 
 function renderActivity() {
@@ -1009,13 +1066,13 @@ async function render() {
   setActiveNav(route)
 
   try {
-    if (route.page === 'agents') renderAgentsPage()
+    if (route.page === 'incidents') await renderIncidentsPage()
+    else if (route.page === 'incident') await renderHospitalVisit(route.agentId)
+    else if (route.page === 'agents') renderAgentsPage()
     else if (route.page === 'agent') renderAgentProfile(route.agentId)
-    else if (route.page === 'agent-hospital') await renderHospitalVisit(route.agentId)
-    else if (route.page === 'hospital') renderHospitalOverview()
     else if (route.page === 'activity') renderActivity()
     else if (route.page === 'memory') renderMemory()
-    else renderAgentsPage()
+    else await renderIncidentsPage()
     bootError.hidden = true
   } catch (error) {
     console.error(error)

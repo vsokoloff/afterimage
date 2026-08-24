@@ -1,5 +1,5 @@
 /**
- * Local agent fixtures for the Lucid command center.
+ * Local agent fixtures for Lucid Incidents + Hospital.
  * Auth Agent hospital path is grounded in GET /api/visit (real detector).
  * Other agents and non-looping health checks are mock / stub.
  */

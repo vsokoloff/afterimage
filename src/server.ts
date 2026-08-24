@@ -123,5 +123,5 @@ function isDirectRun(): boolean {
 
 if (isDirectRun()) {
   const { url } = await startServer()
-  console.log(`Lucid command center: ${url}`)
+  console.log(`Lucid: ${url}`)
 }

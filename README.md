@@ -1,6 +1,6 @@
 # Afterimage (Lucid)
 
-**Local-first agent command center** with a **Hospital** for failure patterns.
+**Local-first Lucid** — start from **open incidents**, diagnose in **Hospital**.
 
 `lucid open` → local dashboard. No accounts, no SaaS login.
 
@@ -11,23 +11,23 @@ Hospital language is only in feature labels. The chrome is a developer tool (Lin
 ## Mental model
 
 ```text
-Command center (Agents / Activity / Memory)
-        └── Hospital (per-agent diagnostics)
+Incidents (default) → Hospital diagnostics
+        └── Agents / Activity / Memory (secondary)
                 OBSERVE → TEST → ABNORMALITY → EVIDENCE → DIAGNOSIS → TREATMENT → RECHECK
 ```
 
-- **Agents** — route work, inspect health, open profiles
+- **Incidents** — open failures; open one to run diagnostics
 - **Hospital** — progressive department tests; real looping evidence for Auth Agent
+- **Agents** — optional roster / routing (not the front door)
 - **`lucid fix`** — CLI prints treatment; the UI does **not** fake a web patch
 
 ## Demo path
 
 1. `npm run demo` or `npm run web` → open dashboard  
-2. **Agents** → **Auth Agent** (unhealthy) → **View**  
-3. **Send to Hospital** → **Run diagnostics**  
-4. See A→B→A hashes → root cause (case notes) → treatment  
-5. Copy/run `npm run lucid -- fix` → **Mark treatment applied (simulate)**  
-6. **Recheck** → pass → **Clear & return** → health up + memory learned  
+2. **Incidents** → **Auth Agent** (open failure) → **Open diagnostics**  
+3. **Run diagnostics** → A→B→A hashes → root cause → treatment  
+4. Copy/run `npm run lucid -- fix` → **Mark treatment applied (simulate)**  
+5. **Recheck** → pass → **Clear & return** → **Back to Incidents**
 
 ## Run
 
@@ -36,7 +36,7 @@ Node 20+.
 ```sh
 npm install
 npm test
-npm run web           # command center UI
+npm run web           # Lucid UI (starts on Incidents)
 npm run demo          # terminal trace + open UI
 npm run lucid -- departments
 npm run lucid -- doctor
@@ -78,14 +78,10 @@ src/
   departments/                 Hospital plugin system
     looping/repeated-file-state/
   case.ts                      Auth Agent fixture
-  visit.ts                     /api/visit payload
-  cli.ts                       lucid doctor / fix / …
-  demo.ts / server.ts
+  visit.ts                     GET /api/visit builder
+  server.ts                    Static UI + visit API
 web/
-  index.html / app.js / styles.css
-  data/agents.js               Command-center fixtures
+  index.html                   Shell (Incidents-first nav)
+  app.js                       SPA routes + Hospital UX
+  data/agents.js               Agent / incident fixtures
 ```
-
-## Repo
-
-https://github.com/vsokoloff/afterimage

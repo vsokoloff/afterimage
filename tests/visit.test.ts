@@ -19,21 +19,29 @@ test('visit response keeps detector and case data separate', () => {
   assert.equal(visit.verification.passed, true)
 })
 
-test('serves the command center and visit API', async () => {
+test('serves the incidents-first shell and visit API', async () => {
   const { url, server } = await startServer({ port: 0 })
   try {
     const page = await fetch(url)
     const html = await page.text()
     assert.equal(page.status, 200)
-    assert.match(html, /Agent Command Center/)
+    assert.match(html, /Lucid — Incidents/)
     assert.match(html, /Lucid/)
-    assert.match(html, /Agents/)
+    assert.match(html, /Incidents/)
+    assert.match(html, /#\/incidents/)
     assert.doesNotMatch(html, /Admit agent/)
     assert.doesNotMatch(html, /diagnosis-chat/)
 
     const agentsAsset = await fetch(`${url}/data/agents.js`)
     assert.equal(agentsAsset.status, 200)
     assert.match(await agentsAsset.text(), /Auth Agent/)
+
+    const appAsset = await fetch(`${url}/app.js`)
+    assert.equal(appAsset.status, 200)
+    const appSource = await appAsset.text()
+    assert.match(appSource, /#\/incidents/)
+    assert.match(appSource, /renderIncidentsPage/)
+    assert.doesNotMatch(appSource, /Local command center/)
 
     const charactersAsset = await fetch(`${url}/characters.js`)
     assert.equal(charactersAsset.status, 200)

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Open-source local agent command center with Hospital for failure patterns.",
+  "description": "Open-source local Lucid — incidents-first Hospital for agent failure patterns.",
   "scripts": {
     "build": "tsc",
     "demo": "npm run build && node dist/src/demo.js",
