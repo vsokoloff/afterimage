@@ -30,7 +30,7 @@ Call `startRun` → `record` → `finishRun` from any host. Optional fields on `
 |---------|--------|------|
 | **process** | Shipped | `lucid run -- <cmd>` + filesystem watcher → process + `file_write` |
 | **Codex SDK** | Shipped | `run.stream()` → prompts, model, tools, writes |
-| **Cursor Desktop hooks** | Reserved | IDE chat / host hooks (not SDK stream) |
+| **Cursor Desktop hooks** | Shipped | `lucid attach cursor` → `.cursor/hooks` → AgentEvent |
 | **Claude / Anthropic SDK** | Reserved | Anthropic Messages / tool use streams |
 | **OpenAI Responses** | Reserved | Responses API function-call loops |
 

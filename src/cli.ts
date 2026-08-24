@@ -11,7 +11,7 @@ import {
 import { printTrace } from './display.ts'
 import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
 import { parseRunArgv } from './runtime/parse.ts'
-import { parseOtelArgv, runCommand, startOtlpHttpServer } from './runtime/index.ts'
+import { parseOtelArgv, runCommand, startOtlpHttpServer, installCursorHooks } from './runtime/index.ts'
 import {
   resolveRunIncidentPolicy,
   resolveWebBaseUrl,
@@ -35,7 +35,7 @@ Commands:
   otel [options]   Accept OTLP/HTTP GenAI traces → AgentEvent (local :4318)
   init             Initialize .lucid/ for this repository
   open             Open the Lucid dashboard for this repository
-  attach           Stub — attach Lucid to an agent runtime
+  attach cursor    Install Cursor hooks so normal Agent chats are observed
   status           Show fixture incident status
   doctor           Run Looping → repeated-file-state on the fixture
   inspect          Show evidence + diagnosis for the fixture
@@ -60,6 +60,7 @@ Otel options:
   --idle-ms N      Finish run after idle gap (default: 30000)
 
   npm run lucid -- init
+  npm run lucid -- attach cursor
   npm run lucid -- open
   npm run lucid -- otel
   npm run lucid -- otel --port 4318 --group-by conversation
@@ -74,8 +75,10 @@ Otel options:
   npm run lucid -- uma remember --about hero -- Full-bleed photo, brand first
   npm run lucid -- uma show
 
-Today only Looping → repeated-file-state is shipped.
-Lucid run observes the subprocess only — not agent tool/model internals yet.
+Shipped detectors include repeated-file-state plus scope-explosion, prior-fix-regressed,
+instruction-amnesia, and redundant-rewrite.
+\`lucid attach cursor\` watches normal Cursor Agent sessions via hooks (no prompt change).
+Lucid Kitty meows when something looks sick (terminal + optional macOS notification).
 lucid otel accepts GenAI OTLP/HTTP JSON traces (see docs/ingestion.md).
 Gitty remembers: whenever the codebase changes, commit + explain + push + PR care (same as "gitty push").
 Uma remembers: how you want each part of the UI to look and feel.
@@ -357,13 +360,30 @@ function cmdDepartments(): void {
     }
   }
   console.log()
-  console.log('Shipped today: looping / repeated-file-state only.')
+  console.log('Shipped detectors: see `lucid departments`.')
 }
 
-function cmdStub(name: string): void {
-  console.log(`${name}: not implemented yet.`)
-  console.log('Lucid is local-first; attach will hook an agent runtime')
-  console.log('so the hospital can observe quietly.')
+async function cmdAttach(): Promise<number> {
+  const target = process.argv[3]
+  if (target !== 'cursor') {
+    console.error('Usage: npm run lucid -- attach cursor')
+    console.error('Installs Cursor hooks so you can keep prompting normally.')
+    return 1
+  }
+
+  const store = await openStore({ cwd: process.cwd() })
+  await initWorkspaceStore(store)
+  const result = await installCursorHooks({ projectRoot: store.projectRoot })
+
+  console.log('Lucid Kitty attached to Cursor')
+  console.log(`  hooks:   ${result.hooksJsonPath}`)
+  console.log(`  script:  ${result.observeScriptPath}`)
+  console.log(`  events:  ${result.mergedEvents.join(', ')}`)
+  console.log('')
+  console.log('Keep prompting in Cursor as usual.')
+  console.log('Kitty will meow (and optionally notify) when a disease is detected.')
+  console.log('Open the dashboard anytime with: npm run lucid -- open')
+  return 0
 }
 
 async function main(): Promise<void> {
@@ -388,7 +408,7 @@ async function main(): Promise<void> {
       process.exitCode = await cmdOpen()
       break
     case 'attach':
-      cmdStub('attach')
+      process.exitCode = await cmdAttach()
       break
     case 'status':
       cmdStatus()

@@ -18,7 +18,13 @@ export {
   resolveWebBaseUrl,
   type RunIncidentPolicy,
 } from './policy.ts'
-export { formatIncidentAlert, printIncidentAlert } from './incident-alert.ts'
+export { formatIncidentAlert, printIncidentAlert, persistPetAlert, notifyPetDesktop } from './incident-alert.ts'
+export {
+  formatPetIncidentAlert,
+  formatPetIncidentToast,
+  formatPetWatchingIntro,
+  kittyFace,
+} from './pet-alert.ts'
 export { handleIncidentDetection } from './incident-handling.ts'
 export { incidentDetailUrl } from './urls.ts'
 export {
@@ -39,6 +45,14 @@ export {
   type CodexSDKMessage,
   type ObserveCodexRunOptions,
 } from './codex/index.ts'
+export {
+  handleCursorHook,
+  installCursorHooks,
+  runCursorHookCli,
+  cursorHookToRecordableEvents,
+  type CursorHookPayload,
+  type CursorHookHandleResult,
+} from './cursor/index.ts'
 export {
   coalesceProvider,
   coalesceInputTokens,

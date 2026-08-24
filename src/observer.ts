@@ -158,6 +158,34 @@ export class LucidObserver {
   }
 
   /**
+   * Resume an existing running AgentRun (e.g. Cursor hooks across process invocations).
+   * Rebuilds nextSequence from persisted events. Does not re-open prior incidents
+   * for the same abnormality keys already stored on this run.
+   */
+  async resumeRun(run: AgentRun): Promise<AgentRun> {
+    if (run.status !== 'running') {
+      throw new Error(`Cannot resume run ${run.id} with status ${run.status}`)
+    }
+    this.active = { ...run, events: [...run.events] }
+    this.nextSequence =
+      run.events.reduce((max, event) => Math.max(max, event.sequence), 0) + 1
+    this.seenKeys = new Set()
+    this.projectInstructions = await loadProjectInstructions(this.store)
+
+    // Seed seen keys from current detector output so we don't reopen the same incident.
+    for (const disease of this.diseases) {
+      const abnormality = disease.detect({
+        run: this.active,
+        projectInstructions: this.projectInstructions,
+      })
+      if (!abnormality) continue
+      this.seenKeys.add(abnormalityKey(disease, abnormality))
+    }
+
+    return this.run!
+  }
+
+  /**
    * Persist one event, re-run shipped detectors on the current run snapshot,
    * and create/emit incidents for newly appeared abnormalities.
    */
