@@ -22,6 +22,7 @@ import { startServer } from './server.ts'
 import { parseFixArgv, runFixCommand } from './treatment/index.ts'
 import { parseRecheckArgv, runRecheckCommand } from './recheck/index.ts'
 import { parseGittyArgv, runGittyPush } from './gitty/index.ts'
+import { parseUmaArgv, runUmaCommand, ensureUmaMemorySeed } from './uma/index.ts'
 
 const USAGE = `Lucid hospital (local)
 
@@ -41,6 +42,8 @@ Commands:
   recheck <incident-id>
                    Run reproduction + disease verify; clear only on pass
   gitty push       Commit, explain, push, and take care of PRs (Gitty)
+  uma remember|show|forget
+                   UI design memory (Uma)
   departments      List departments and disease status
 
 Run options:
@@ -58,10 +61,13 @@ Run options:
   npm run lucid -- recheck inc_abc123
   npm run lucid -- gitty push
   npm run lucid -- gitty push --message "why this change"
+  npm run lucid -- uma remember --about hero -- Full-bleed photo, brand first
+  npm run lucid -- uma show
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
 Gitty remembers: "gitty push" always means commit + explain + push + PR care.
+Uma remembers: how you want each part of the UI to look and feel.
 `
 
 function contextFromCase() {
@@ -273,6 +279,24 @@ async function cmdGitty(): Promise<number> {
   return result.exitCode
 }
 
+async function cmdUma(): Promise<number> {
+  const parsed = parseUmaArgv(process.argv)
+  if (!parsed) {
+    console.error(
+      'Usage: npm run lucid -- uma remember --about <part> -- <preference>\n' +
+        '       npm run lucid -- uma show [--about <part>]\n' +
+        '       npm run lucid -- uma forget --about <part>|--id <id>',
+    )
+    return 1
+  }
+
+  const store = await openStore({ cwd: process.cwd() })
+  await ensureUmaMemorySeed(store)
+  const result = await runUmaCommand(store, parsed)
+  console.log(result.message)
+  return result.exitCode
+}
+
 function cmdDepartments(): void {
   console.log('Departments')
   for (const dept of listDepartments()) {
@@ -332,6 +356,9 @@ async function main(): Promise<void> {
       break
     case 'gitty':
       process.exitCode = await cmdGitty()
+      break
+    case 'uma':
+      process.exitCode = await cmdUma()
       break
     case 'departments':
       cmdDepartments()

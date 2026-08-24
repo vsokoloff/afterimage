@@ -40,13 +40,17 @@ test('serves kid-friendly agent UI backed by real agent and incident APIs', asyn
     assert.match(appSource, /\/api\/activity/)
     assert.match(appSource, /\/api\/incidents/)
     assert.match(appSource, /\/api\/workspace/)
+    assert.match(appSource, /\/api\/memory/)
     assert.match(appSource, /workspace-label/)
     assert.match(appSource, /renderAgentsPage/)
     assert.match(appSource, /renderHospitalPage/)
+    assert.match(appSource, /To do today/)
+    assert.match(appSource, /Messages/)
+    assert.match(appSource, /profile-hello/)
+    assert.match(appSource, /Uma keeps UI design/)
     assert.match(appSource, /plain-english\.js/)
     assert.match(appSource, /speechBubble/)
     assert.match(appSource, /Technical details/)
-    assert.match(appSource, /What I'm doing/)
     assert.doesNotMatch(appSource, /healthScore/)
     assert.doesNotMatch(appSource, /\/api\/visit/)
 
@@ -60,6 +64,16 @@ test('serves kid-friendly agent UI backed by real agent and incident APIs', asyn
     assert.equal(agentsApi.status, 200)
     const agentsBody = await agentsApi.json()
     assert.ok(Array.isArray(agentsBody.agents))
+
+    const memoryApi = await fetch(`${url}/api/memory`)
+    assert.equal(memoryApi.status, 200)
+    const memoryBody = await memoryApi.json()
+    assert.ok(Array.isArray(memoryBody.agents))
+    assert.ok(
+      memoryBody.agents.some(
+        (a: { agentId?: string; name?: string }) => a.agentId === 'uma' || a.name === 'Uma',
+      ),
+    )
 
     const activityApi = await fetch(`${url}/api/activity`)
     assert.equal(activityApi.status, 200)

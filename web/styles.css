@@ -1,25 +1,34 @@
 :root {
-  --bg: #0c0d10;
-  --bg-elevated: #12141a;
-  --bg-hover: #181b24;
-  --sidebar: #0a0b0e;
-  --border: #232733;
-  --border-subtle: #1a1d27;
-  --text: #e8eaef;
-  --text-muted: #8b93a7;
-  --text-faint: #5c6578;
-  --accent: #5b8def;
-  --accent-soft: rgb(91 141 239 / 12%);
-  --ok: #3ecf8e;
-  --ok-soft: rgb(62 207 142 / 12%);
-  --warn: #e6b84d;
-  --warn-soft: rgb(230 184 77 / 12%);
-  --fault: #e86a5c;
-  --fault-soft: rgb(232 106 92 / 12%);
-  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --radius: 6px;
-  --sidebar-w: 220px;
+  /* Uma vibe — soft kids-app care desk (olive + cream + sticker accents) */
+  --bg: #f3efe6;
+  --bg-elevated: #fffdf8;
+  --bg-hover: #ebe4d6;
+  --sidebar: #5f6b3d;
+  --border: #d9d0bf;
+  --border-subtle: #e7dfd0;
+  --text: #1f2a37;
+  --text-muted: #5c6775;
+  --text-faint: #8a93a0;
+  --accent: #c6e35a;
+  --accent-ink: #324012;
+  --accent-soft: rgb(198 227 90 / 28%);
+  --ok: #5fad6e;
+  --ok-soft: rgb(95 173 110 / 16%);
+  --warn: #e0a84a;
+  --warn-soft: rgb(224 168 74 / 16%);
+  --fault: #e56b6b;
+  --fault-soft: rgb(229 107 107 / 14%);
+  --pill-pink: #f3a8b8;
+  --pill-navy: #3e4c66;
+  --messages: #d7eb7a;
+  --mono: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --sans: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --display: "Fredoka", "Nunito", system-ui, sans-serif;
+  --radius: 22px;
+  --radius-sm: 14px;
+  --radius-pill: 999px;
+  --sidebar-w: 232px;
+  --shadow-soft: 0 10px 28px rgb(31 42 55 / 8%);
 }
 
 * {
@@ -78,9 +87,10 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 20px 14px 16px;
+  padding: 22px 16px 18px;
   background: var(--sidebar);
-  border-right: 1px solid var(--border);
+  border-right: none;
+  color: #f4f7ea;
 }
 
 .brand {
@@ -91,45 +101,48 @@ input:focus-visible {
 }
 
 .brand-mark {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 0 0 3px rgb(198 227 90 / 25%);
 }
 
 .brand-name {
+  font-family: var(--display);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 22px;
   letter-spacing: -0.02em;
+  color: var(--accent);
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   flex: 1;
 }
 
 .nav-item {
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: var(--radius-pill);
+  color: rgb(244 247 234 / 78%);
+  font-weight: 700;
 }
 
 .nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
 }
 
 .nav-item.is-active {
-  background: var(--accent-soft);
-  color: var(--text);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .sidebar-foot {
   padding: 12px 10px 4px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid rgb(255 255 255 / 12%);
   margin-top: auto;
 }
 
@@ -138,17 +151,18 @@ input:focus-visible {
   align-items: center;
   gap: 8px;
   margin: 0;
-  color: var(--text-muted);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
+  color: rgb(244 247 234 / 72%);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--ok);
+  background: var(--accent);
   flex-shrink: 0;
 }
 
@@ -163,8 +177,9 @@ input:focus-visible {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 32px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 18px 32px;
+  border-bottom: none;
+  background: transparent;
 }
 
 .topbar-main {
@@ -174,10 +189,12 @@ input:focus-visible {
   min-width: 0;
 }
 
-.workspace-label {
+.workspace-label,
+.topbar-note {
   margin: 0;
-  font-family: var(--mono);
-  font-size: 11px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -187,15 +204,10 @@ input:focus-visible {
 
 .crumb {
   margin: 0;
+  font-family: var(--display);
   font-weight: 600;
+  font-size: 15px;
   letter-spacing: -0.01em;
-}
-
-.topbar-note {
-  margin: 0;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 11px;
 }
 
 .content {
@@ -923,10 +935,21 @@ input:focus-visible {
 .dept-note,
 .feed-text,
 .memory-item p,
+.memory-notes,
 .empty {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.memory-notes {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+.memory-note {
+  color: var(--text);
 }
 
 .tag-real,
@@ -1466,5 +1489,305 @@ code {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* ─── Uma redesign: sticker covers + agent-inside workflow ─── */
+
+.page-head h1,
+.profile-hello {
+  font-family: var(--display);
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+
+.btn {
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--text);
+  background: var(--bg-elevated);
+  font-weight: 800;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
+}
+
+.btn-ghost {
+  border-style: dashed;
+  background: transparent;
+}
+
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.agent-card,
+.agent-card--story {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 18px 18px;
+  text-align: center;
+  background: var(--bg-elevated);
+  border: 3px solid var(--text);
+  border-radius: 28px;
+  box-shadow: var(--shadow-soft);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-3px) rotate(-0.4deg);
+  box-shadow: 0 16px 34px rgb(31 42 55 / 12%);
+}
+
+.agent-card-portrait {
+  width: 112px;
+  height: 112px;
+}
+
+.agent-card-portrait .agent-mascot {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 0 rgb(31 42 55 / 8%));
+}
+
+.agent-card-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.agent-card--story .role {
+  margin: 0;
+  max-width: 22ch;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.speech-bubble {
+  margin: 2px 0 0;
+  padding: 12px 14px;
+  width: 100%;
+  background: #fff7d6;
+  border: 2px solid var(--text);
+  border-radius: 18px 18px 18px 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.badge {
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--text);
+  font-weight: 800;
+}
+
+.profile--story,
+.profile--uma {
+  display: grid;
+  gap: 18px;
+  max-width: 560px;
+}
+
+.profile-hello-wrap {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.profile-hello {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 600;
+}
+
+.profile-hello-sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.profile-cover {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: var(--bg-elevated);
+  border: 3px solid var(--text);
+  border-radius: 28px;
+}
+
+.profile-cover .agent-mascot--lg {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+}
+
+.todo-block,
+.messages-block {
+  display: grid;
+  gap: 12px;
+}
+
+.todo-title,
+.messages-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.todo-list,
+.messages-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.todo-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--text);
+  border-radius: 22px;
+}
+
+.todo-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.todo-pill--pink {
+  background: var(--pill-pink);
+  color: #5a2433;
+}
+
+.todo-pill--navy {
+  background: var(--pill-navy);
+}
+
+.todo-pill--lime {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.todo-pill--fault {
+  background: var(--fault);
+  color: #fff;
+}
+
+.todo-text {
+  margin: 0;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.todo-check {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--text);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.todo-check.is-done {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 4px var(--bg-elevated);
+}
+
+.messages-block {
+  padding: 16px 18px 14px;
+  background: var(--messages);
+  border: 3px solid var(--text);
+  border-radius: 26px;
+}
+
+.messages-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 2px dashed rgb(31 42 55 / 18%);
+  font-weight: 700;
+}
+
+.messages-item:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.messages-time {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.toolbar input[type='search'] {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  font-weight: 700;
+}
+
+.incident-card,
+.memory-item,
+.dept-item,
+.feed-item,
+.story-section,
+.medical-banner {
+  border: 2px solid var(--text);
+  border-radius: 22px;
+  box-shadow: none;
+}
+
+.medical-banner {
+  background: #ffe3e8;
+}
+
+@media (max-width: 720px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-radius: 0 0 24px 24px;
+  }
+
+  .todo-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .todo-pill {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }

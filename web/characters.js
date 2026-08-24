@@ -46,39 +46,38 @@ function svgMarkup(agentId, mood) {
     ops: opsSvg,
     kitty: kittySvg,
     gitty: kittySvg,
+    uma: umaSvg,
   }
   const build = builders[agentId] ?? fallbackSvg
   return build(mood)
 }
 
 function face(mood, { cx = 40, cy = 36, eyeY = 34, mouthY = 46 } = {}) {
+  // Sticker-style: solid dot eyes + simple smile (Uma covers inspo).
   if (mood === 'worried') {
     return `
-      <g class="mascot-face" fill="none" stroke="#2a2d36" stroke-width="1.6" stroke-linecap="round">
-        <path d="M${cx - 11} ${eyeY - 8} q 4 1 7 5" />
-        <path d="M${cx + 11} ${eyeY - 8} q -4 1 -7 5" />
-      </g>
-      <circle cx="${cx - 7}" cy="${eyeY}" r="5.2" fill="#fff"/>
-      <circle cx="${cx + 7}" cy="${eyeY}" r="5.2" fill="#fff"/>
-      <circle cx="${cx - 5.6}" cy="${eyeY + 0.4}" r="2.4" fill="#2a2d36"/>
-      <circle cx="${cx + 5.6}" cy="${eyeY + 0.4}" r="2.4" fill="#2a2d36"/>
-      <ellipse cx="${cx}" cy="${eyeY + 6}" rx="2.2" ry="1.4" fill="#f4a89a"/>
-      <path d="M${cx - 6} ${mouthY + 1} q 6 -4 12 0" fill="none" stroke="#2a2d36" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="${cx - 7}" cy="${eyeY}" r="3.2" fill="#1f2a37"/>
+      <circle cx="${cx + 7}" cy="${eyeY}" r="3.2" fill="#1f2a37"/>
+      <path d="M${cx - 7} ${mouthY + 2} q 7 -6 14 0" fill="none" stroke="#1f2a37" stroke-width="2.4" stroke-linecap="round"/>
     `
   }
   return `
-    <circle cx="${cx - 7}" cy="${eyeY}" r="5.4" fill="#fff"/>
-    <circle cx="${cx + 7}" cy="${eyeY}" r="5.4" fill="#fff"/>
-    <circle cx="${cx - 5.4}" cy="${eyeY}" r="2.5" fill="#2a2d36"/>
-    <circle cx="${cx + 5.4}" cy="${eyeY}" r="2.5" fill="#2a2d36"/>
-    <ellipse cx="${cx}" cy="${eyeY + 6}" rx="2.2" ry="1.4" fill="#f4a89a"/>
-    <path d="M${cx - 7} ${mouthY} q 7 7 14 0" fill="none" stroke="#2a2d36" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="${cx - 7}" cy="${eyeY}" r="3.4" fill="#1f2a37"/>
+    <circle cx="${cx + 7}" cy="${eyeY}" r="3.4" fill="#1f2a37"/>
+    <path d="M${cx - 7} ${mouthY} q 7 8 14 0" fill="none" stroke="#1f2a37" stroke-width="2.4" stroke-linecap="round"/>
+  `
+}
+
+function littleFeet() {
+  return `
+    <ellipse cx="32" cy="72" rx="5" ry="3.2" fill="#1f2a37"/>
+    <ellipse cx="48" cy="72" rx="5" ry="3.2" fill="#1f2a37"/>
   `
 }
 
 function frame(bg, body) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="100%" height="100%" role="img" focusable="false">
-  <rect width="80" height="80" rx="18" fill="${bg}"/>
+  <rect width="80" height="80" rx="22" fill="${bg}" stroke="#1f2a37" stroke-width="3"/>
   ${body}
 </svg>`
 }
@@ -241,21 +240,35 @@ function kittySvg(mood) {
   return frame(
     '#ffe8d6',
     `
-    <ellipse cx="40" cy="46" rx="20" ry="16" fill="#f4b183"/>
-    <circle cx="40" cy="34" r="16" fill="#f7c59f"/>
-    <path d="M24 28l-2-12 12 8z" fill="#f4b183"/>
-    <path d="M56 28l2-12-12 8z" fill="#f4b183"/>
-    <path d="M26 26l2-8 8 6z" fill="#f9d5b5"/>
-    <path d="M54 26l-2-8-8 6z" fill="#f9d5b5"/>
-    ${face(mood, { cy: 34, eyeY: 32, mouthY: 44 })}
-    <ellipse cx="40" cy="40" rx="2.5" ry="1.6" fill="#f48fb1"/>
-    <g fill="none" stroke="#2a2d36" stroke-width="1.6" stroke-linecap="round">
-      <path d="M18 38h8M18 42h7"/>
-      <path d="M54 38h8M55 42h7"/>
-      <path d="M58 50c6 2 10 8 8 14"/>
+    <ellipse cx="40" cy="44" rx="20" ry="16" fill="#f4b183" stroke="#1f2a37" stroke-width="2.5"/>
+    <circle cx="40" cy="32" r="16" fill="#f7c59f" stroke="#1f2a37" stroke-width="2.5"/>
+    <path d="M24 26l-2-12 12 8z" fill="#f4b183" stroke="#1f2a37" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M56 26l2-12-12 8z" fill="#f4b183" stroke="#1f2a37" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M26 24l2-8 8 6z" fill="#f9d5b5"/>
+    <path d="M54 24l-2-8-8 6z" fill="#f9d5b5"/>
+    ${face(mood, { cy: 32, eyeY: 30, mouthY: 42 })}
+    <ellipse cx="40" cy="38" rx="2.5" ry="1.6" fill="#f48fb1"/>
+    <g fill="none" stroke="#1f2a37" stroke-width="2" stroke-linecap="round">
+      <path d="M18 36h8M18 40h7"/>
+      <path d="M54 36h8M55 40h7"/>
     </g>
-    <circle cx="52" cy="18" r="3" fill="#7eb6e8"/>
-    <path d="M52 15v-4M50 14l-3-2M54 14l3-2" stroke="#7eb6e8" stroke-width="1.4" stroke-linecap="round"/>
+    ${littleFeet()}
+  `,
+  )
+}
+
+/** Uma — designer palette sticker. */
+function umaSvg(mood) {
+  return frame(
+    '#efe4ff',
+    `
+    <rect x="18" y="16" width="44" height="40" rx="12" fill="#d7b8f3" stroke="#1f2a37" stroke-width="2.5"/>
+    <rect x="24" y="22" width="32" height="22" rx="6" fill="#faf6ff" stroke="#1f2a37" stroke-width="2"/>
+    <circle cx="30" cy="52" r="5.5" fill="#f48fb1" stroke="#1f2a37" stroke-width="2"/>
+    <circle cx="40" cy="52" r="5.5" fill="#ffe082" stroke="#1f2a37" stroke-width="2"/>
+    <circle cx="50" cy="52" r="5.5" fill="#81d4fa" stroke="#1f2a37" stroke-width="2"/>
+    ${face(mood, { cy: 32, eyeY: 30, mouthY: 40 })}
+    ${littleFeet()}
   `,
   )
 }
@@ -264,14 +277,9 @@ function fallbackSvg(mood) {
   return frame(
     '#eceff4',
     `
-    <circle cx="40" cy="38" r="20" fill="#c5cad6"/>
-    ${face(mood)}
-    <g fill="none" stroke="#2a2d36" stroke-width="1.7" stroke-linecap="round">
-      <path d="M22 48c-4 1-7-1-9-4"/>
-      <path d="M58 48c4 1 7-1 9-4"/>
-      <path d="M32 58v6l-3 2"/>
-      <path d="M48 58v6l3 2"/>
-    </g>
+    <circle cx="40" cy="36" r="20" fill="#c5cad6" stroke="#1f2a37" stroke-width="2.5"/>
+    ${face(mood, { cy: 36, eyeY: 34, mouthY: 46 })}
+    ${littleFeet()}
   `,
   )
 }

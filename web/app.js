@@ -3,7 +3,6 @@ import {
   describeEvent,
   firstName,
   helpLine,
-  howImDoingLine,
   relativeWorked,
   speechBubble,
   statusBadgeClass,
@@ -82,20 +81,6 @@ function formatTime(iso) {
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date(iso))
-  } catch {
-    return iso
-  }
-}
-
-function dayLabel(iso) {
-  try {
-    const date = new Date(iso)
-    const today = new Date()
-    const yesterday = new Date()
-    yesterday.setDate(today.getDate() - 1)
-    if (date.toDateString() === today.toDateString()) return 'Today'
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
-    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date)
   } catch {
     return iso
   }
@@ -232,28 +217,102 @@ function renderAgentCard(agent) {
   }
   card.append(statusRow)
 
-  if (agent.status === 'unhealthy') {
-    card.append(
-      el(
-        'p',
-        'agent-card-symptom',
-        agent.primaryOpenIncidentId
-          ? `${firstName(agent)} needs help.`
-          : `${firstName(agent)} needs help.`,
-      ),
-    )
-  } else if (agent.status === 'working') {
-    card.append(el('p', 'agent-card-ok', 'Everything looks good ✓'))
-  }
-
   const actions = el('div', 'card-actions')
-  const cta =
-    agent.status === 'unhealthy'
-      ? `See what's wrong`
-      : `See what ${firstName(agent)} is doing`
-  actions.append(el('span', 'btn btn-ghost', cta))
+  actions.append(el('span', 'btn btn-ghost', `Open ${firstName(agent)}`))
   card.append(actions)
   return card
+}
+
+function todoTasksForAgent(agent, openIncidents, recentEvents) {
+  /** @type {Array<{ pill: string, pillClass: string, text: string, done: boolean }>} */
+  const tasks = []
+
+  if (openIncidents.length > 0) {
+    const incident = openIncidents[0]
+    tasks.push({
+      pill: 'Help',
+      pillClass: 'todo-pill--fault',
+      text: symptomLine(incident, firstName(agent)),
+      done: false,
+    })
+  }
+
+  if (agent.status === 'working') {
+    tasks.push({
+      pill: 'Now',
+      pillClass: 'todo-pill--lime',
+      text: agent.currentActivity || speechBubble(agent, recentEvents),
+      done: false,
+    })
+  } else if (agent.status === 'idle' || agent.status === 'stopped') {
+    tasks.push({
+      pill: 'Daily',
+      pillClass: 'todo-pill--navy',
+      text:
+        agent.status === 'stopped'
+          ? `${firstName(agent)} stopped — check in when you’re ready.`
+          : `${firstName(agent)} is resting until the next job.`,
+      done: true,
+    })
+  }
+
+  if (agent.role) {
+    tasks.push({
+      pill: 'Job',
+      pillClass: 'todo-pill--pink',
+      text: agent.role,
+      done: agent.status !== 'working',
+    })
+  }
+
+  if (!tasks.length) {
+    tasks.push({
+      pill: 'Daily',
+      pillClass: 'todo-pill--navy',
+      text: 'Nothing on the list yet.',
+      done: true,
+    })
+  }
+
+  return tasks.slice(0, 4)
+}
+
+function renderTodoRow(task) {
+  const row = el('li', 'todo-row')
+  row.append(
+    el('span', `todo-pill ${task.pillClass}`, task.pill),
+    el('p', 'todo-text', task.text),
+    el('span', `todo-check${task.done ? ' is-done' : ''}`, ''),
+  )
+  return row
+}
+
+function renderMessagesBlock(agent, recentEvents) {
+  const block = el('section', 'messages-block')
+  block.append(el('h2', 'messages-title', 'Messages'))
+  const list = el('ul', 'messages-list')
+
+  const events = recentEvents.slice(0, 6)
+  if (!events.length) {
+    const item = el('li', 'messages-item')
+    item.append(
+      el('span', '', `No messages yet from ${firstName(agent)}.`),
+      el('span', 'messages-time', '—'),
+    )
+    list.append(item)
+  } else {
+    for (const event of events) {
+      const item = el('li', 'messages-item')
+      item.append(
+        el('span', '', describeEvent(event)),
+        el('span', 'messages-time', formatTime(event.timestamp)),
+      )
+      list.append(item)
+    }
+  }
+
+  block.append(list)
+  return block
 }
 
 async function renderAgentsPage() {
@@ -267,7 +326,7 @@ async function renderAgentsPage() {
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Your agents'),
-    el('p', '', 'Your little team in this workspace. Who they are, what they’re doing, and if they’re okay.'),
+    el('p', '', 'Tap a cover to peek inside — who they are, what to do today, and their messages.'),
   )
   content.append(head)
 
@@ -321,7 +380,7 @@ async function renderAgentProfile(agentId) {
   content.replaceChildren()
   crumb.textContent = `Your agents / ${agent.name}`
 
-  const layout = el('div', 'profile profile--story')
+  const layout = el('div', 'profile profile--story profile--uma')
 
   const back = el('button', 'btn', '← Your agents')
   back.type = 'button'
@@ -330,12 +389,16 @@ async function renderAgentProfile(agentId) {
   })
   layout.append(back)
 
-  const hero = el('div', 'profile-hero profile-hero--story')
-  hero.append(mascotForAgent(agent, 'lg'))
-  hero.append(el('h1', '', agent.name))
-  if (agent.role) hero.append(el('p', 'role', agent.role))
-  hero.append(agentStatusBadge(agent.status))
-  layout.append(hero)
+  const hello = el('div', 'profile-hello-wrap')
+  hello.append(el('h1', 'profile-hello', `Hello, ${firstName(agent)}!`))
+  if (agent.role) hello.append(el('p', 'profile-hello-sub', agent.role))
+  hello.append(agentStatusBadge(agent.status))
+  layout.append(hello)
+
+  const cover = el('div', 'profile-cover')
+  cover.append(mascotForAgent(agent, 'lg'))
+  cover.append(speechEl(speechBubble(agent, recentEvents)))
+  layout.append(cover)
 
   const needsHelp = agent.status === 'unhealthy' || openIncidents.length > 0
   if (needsHelp) {
@@ -366,78 +429,16 @@ async function renderAgentProfile(agentId) {
     layout.append(alert)
   }
 
-  const doingBody = document.createElement('div')
-  doingBody.append(speechEl(speechBubble(agent, recentEvents)))
-  if (agent.status === 'working' && agent.currentRunStartedAt) {
-    doingBody.append(
-      el(
-        'p',
-        'story-meta',
-        `Started ${formatTime(agent.currentRunStartedAt)}${
-          agent.currentRunDurationMs != null
-            ? ` · ${relativeWorked(agent) ?? ''}`
-            : ''
-        }`,
-      ),
-    )
-  } else if (relativeWorked(agent)) {
-    doingBody.append(el('p', 'story-meta', relativeWorked(agent)))
+  const todo = el('section', 'todo-block')
+  todo.append(el('h2', 'todo-title', 'To do today'))
+  const todoList = el('ul', 'todo-list')
+  for (const task of todoTasksForAgent(agent, openIncidents, recentEvents)) {
+    todoList.append(renderTodoRow(task))
   }
-  layout.append(storySection("What I'm doing", doingBody))
+  todo.append(todoList)
+  layout.append(todo)
 
-  const doneEvents = recentEvents.slice(0, 12)
-  layout.append(
-    storySection(
-      "What I've done",
-      doneEvents.length
-        ? (() => {
-            const list = el('ul', 'done-list')
-            doneEvents.forEach((event, index) => {
-              const item = el('li', 'done-item')
-              const mark =
-                agent.status === 'working' && index === 0 ? '●' : '✓'
-              item.append(
-                el('span', 'done-mark', mark),
-                el('span', '', describeEvent(event)),
-              )
-              list.append(item)
-            })
-            return list
-          })()
-        : emptyState('Nothing recorded yet.'),
-    ),
-  )
-
-  const how = howImDoingLine(agent, openIncidents)
-  const howBody = document.createElement('div')
-  howBody.append(
-    el('p', `how-title how-title--${how.tone}`, `${how.tone === 'ok' ? '💚' : how.tone === 'help' ? '🔴' : '⚫'} ${how.title}`),
-    el('p', 'story-copy', how.detail),
-  )
-  layout.append(storySection("How I'm doing", howBody))
-
-  layout.append(
-    storySection(
-      'Recent work',
-      recentRuns.length
-        ? (() => {
-            const list = el('ul', 'recent-work-list')
-            let lastDay = ''
-            for (const run of recentRuns.slice(0, 8)) {
-              const day = dayLabel(run.startedAt)
-              if (day !== lastDay) {
-                list.append(el('li', 'recent-work-day', day))
-                lastDay = day
-              }
-              const item = el('li', 'recent-work-item')
-              item.textContent = runTitle(run)
-              list.append(item)
-            }
-            return list
-          })()
-        : emptyState('No recent work yet.'),
-    ),
-  )
+  layout.append(renderMessagesBlock(agent, recentEvents))
 
   const techBody = document.createElement('div')
   techBody.append(
@@ -608,14 +609,59 @@ function renderMemoryPage() {
   const head = el('div', 'page-head')
   head.append(
     el('h1', '', 'Memory'),
-    el('p', '', 'Long-term agent memory is not saved in Lucid yet.'),
+    el('p', '', 'What your agents remember — Uma keeps UI design preferences here.'),
   )
   content.append(head)
-  content.append(
-    emptyState(
-      'Memory is unavailable for now. Lucid will not make up learned lists or fake memories.',
-    ),
-  )
+
+  void (async () => {
+    try {
+      const data = await fetchJson('/api/memory')
+      const agents = Array.isArray(data.agents) ? data.agents : []
+      if (agents.length === 0) {
+        content.append(
+          emptyState('No agent memories yet.'),
+        )
+        return
+      }
+
+      const list = el('ul', 'memory-list')
+      for (const agent of agents) {
+        const item = el('li', 'memory-item')
+        const top = el('div', 'dept-item-top')
+        top.append(
+          el('strong', 'dept-name', agent.name ?? agent.agentId),
+          el('span', 'muted', agent.role ?? ''),
+        )
+        item.append(top)
+
+        const entries = Array.isArray(agent.entries) ? agent.entries : []
+        if (entries.length === 0) {
+          item.append(
+            el(
+              'p',
+              '',
+              'No preferences yet. Tell Uma how you want a part of the UI to feel.',
+            ),
+          )
+        } else {
+          const notes = el('ul', 'memory-notes')
+          for (const entry of entries) {
+            const note = el('li', 'memory-note')
+            note.append(
+              el('strong', '', entry.about),
+              document.createTextNode(` — ${entry.text}`),
+            )
+            notes.append(note)
+          }
+          item.append(notes)
+        }
+        list.append(item)
+      }
+      content.append(list)
+    } catch (error) {
+      content.append(emptyState(error instanceof Error ? error.message : String(error)))
+    }
+  })()
 }
 
 function renderIncidentCard(incident) {

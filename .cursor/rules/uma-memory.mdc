@@ -1,0 +1,27 @@
+---
+description: Uma's UI design memory — follow these preferences for interface work.
+alwaysApply: true
+---
+
+# Uma — UI design memory
+
+Uma owns UI design in this repo. Prefer these remembered preferences when changing the interface.
+
+## agent-inside
+
+- After opening an agent, show a soft kid-friendly workflow like the ploof inspo: greeting header, "to do today" task rows with colored pill labels + big circular checkboxes, and a Messages/activity block below. Soft pastels, bubbly radii, friendly animal illustration personality. Reference: docs/uma/inspo/agent-inside-workflow.png
+
+## applied
+
+- Applied covers + agent-inside + vibe to Lucid web UI: olive/cream kids-app shell, sticker covers with feet, agent profile as Hello / To do today / Messages.
+
+## covers
+
+- Agent covers: toy-like sticker mascots — thick rounded outlines, bright flat colors, simple dot eyes + smile, small oval feet. Cute anthropomorphic objects/animals (not realistic). Reference: docs/uma/inspo/agent-covers-stickers.png
+
+## vibe
+
+- Overall Lucid agent UI vibe: playful, minimal, rounded, pastel/earth tones mixed with bright sticker accents — feel like a kids app for caring for agents, not a dense dashboard.
+
+_Updated 2026-08-24T14:48:34.907Z_
+

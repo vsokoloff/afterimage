@@ -85,7 +85,7 @@ test('Repo A events and agents do not appear in Repo B', async () => {
   }
 })
 
-test('agent appears dynamically after first observed run and uses repo config name', async () => {
+test('agent appears from repo config before any run, and uses config name after runs', async () => {
   const repo = await mkdtemp(path.join(os.tmpdir(), 'lucid-repo-config-'))
   try {
     await initGitRepo(repo)
@@ -100,6 +100,12 @@ test('agent appears dynamically after first observed run and uses repo config na
       },
     })
 
+    const configured = await fetchAgents(store)
+    assert.equal(configured.agents.length, 1)
+    assert.equal(configured.agents[0]?.name, 'My Repo Bot')
+    assert.equal(configured.agents[0]?.runCount, 0)
+    assert.equal(configured.agents[0]?.status, 'idle')
+
     await observeAgent(store, 'my-bot')
 
     const roster = await fetchAgents(store)
@@ -107,6 +113,7 @@ test('agent appears dynamically after first observed run and uses repo config na
     assert.equal(roster.agents[0]?.name, 'My Repo Bot')
     assert.equal(roster.agents[0]?.characterId, 'test')
     assert.equal(roster.agents[0]?.role, 'Configured locally')
+    assert.ok((roster.agents[0]?.runCount ?? 0) >= 1)
   } finally {
     await rm(repo, { recursive: true, force: true })
   }

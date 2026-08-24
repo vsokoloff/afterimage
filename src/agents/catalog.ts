@@ -48,6 +48,16 @@ export function resolveAgentCatalog(
     }
   }
 
+  if (agentId === 'uma') {
+    return {
+      name: configured?.name ?? 'Uma',
+      characterId: configured?.characterId ?? 'uma',
+      role:
+        configured?.role ??
+        'UI design — remembers how you want each part of the interface to feel',
+    }
+  }
+
   if (agentId === 'gitty' || agentId === 'subprocess') {
     return {
       name: configured?.name ?? (agentId === 'gitty' ? 'Gitty' : 'Subprocess'),
@@ -79,6 +89,7 @@ export function resolveAgentCatalog(
 export function resolveAgentRuntime(agentId: string, runEvents?: { type: string }[]): string {
   if (agentId.startsWith('codex:') || agentId.startsWith('recheck:')) return 'Codex'
   if (agentId === 'subprocess' || agentId === 'gitty') return 'Process'
+  if (agentId === 'uma') return 'Design'
 
   const hasProcess = runEvents?.some(
     (event) => event.type === 'process_start' || event.type === 'process_end',

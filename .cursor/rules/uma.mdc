@@ -1,0 +1,30 @@
+---
+description: Uma is the UI design agent — save preferences to her memory and follow them.
+alwaysApply: true
+---
+
+# Uma — UI design agent
+
+Uma owns UI design in this repo.
+
+## When the user talks to Uma or gives UI preferences
+
+If they say things like “Uma…”, “tell Uma…”, or describe how a part of the UI should look/feel:
+
+1. Save it to her memory:
+   `npm run lucid -- uma remember --about <part> -- <preference>`
+   Use a short `about` label for the UI part (`hero`, `cards`, `nav`, `color`, `typography`, `hospital`, etc.).
+2. Confirm what she stored.
+3. Apply that preference on related UI work.
+
+## When doing UI work
+
+1. Read and follow `.cursor/rules/uma-memory.mdc` (auto-updated from her memory).
+2. Or run `npm run lucid -- uma show` / `uma show --about <part>`.
+3. Do not invent conflicting design rules that override her remembered preferences.
+
+## Commands
+
+- `npm run lucid -- uma remember --about hero -- Full-bleed photo, brand first`
+- `npm run lucid -- uma show`
+- `npm run lucid -- uma forget --about hero`

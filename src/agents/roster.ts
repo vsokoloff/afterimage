@@ -228,12 +228,44 @@ function buildAgentSummary(
   }
 }
 
+function idleConfiguredSummary(
+  agentId: string,
+  repoAgents: Awaited<ReturnType<typeof loadRepoAgents>>,
+): AgentSummary {
+  const catalog = resolveAgentCatalog(agentId, repoAgents)
+  return {
+    id: agentId,
+    name: catalog.name,
+    characterId: catalog.characterId,
+    role: catalog.role,
+    runtime: resolveAgentRuntime(agentId),
+    status: 'idle',
+    currentActivity: null,
+    currentRunId: null,
+    currentRunStartedAt: null,
+    currentRunDurationMs: null,
+    openIncidentCount: 0,
+    primaryOpenIncidentId: null,
+    lastSeenAt: new Date(0).toISOString(),
+    runCount: 0,
+  }
+}
+
 export async function fetchAgents(store: LucidStore): Promise<AgentsListResponse> {
   const repoAgents = await loadRepoAgents(store)
   const buckets = await loadAgentBuckets(store)
-  const agents = [...buckets.values()]
-    .map((bucket) => buildAgentSummary(bucket, repoAgents))
-    .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt))
+  const agents = [...buckets.values()].map((bucket) => buildAgentSummary(bucket, repoAgents))
+
+  // Configured roster agents (Uma, Gitty, …) appear even before their first run.
+  for (const agentId of Object.keys(repoAgents.agents)) {
+    if (buckets.has(agentId)) continue
+    agents.push(idleConfiguredSummary(agentId, repoAgents))
+  }
+
+  agents.sort((a, b) => {
+    if (a.lastSeenAt !== b.lastSeenAt) return b.lastSeenAt.localeCompare(a.lastSeenAt)
+    return a.name.localeCompare(b.name)
+  })
 
   return { agents }
 }
@@ -243,10 +275,21 @@ export async function fetchAgentProfile(
   agentId: string,
 ): Promise<AgentProfileResponse | null> {
   const buckets = await loadAgentBuckets(store)
-  const bucket = buckets.get(agentId)
-  if (!bucket) return null
-
   const repoAgents = await loadRepoAgents(store)
+  const bucket = buckets.get(agentId)
+  if (!bucket) {
+    if (!repoAgents.agents[agentId]) return null
+    const agent = idleConfiguredSummary(agentId, repoAgents)
+    return {
+      agent,
+      currentRun: null,
+      recentRuns: [],
+      recentEvents: [],
+      openIncidents: [],
+      pastIncidents: [],
+    }
+  }
+
   const agent = buildAgentSummary(bucket, repoAgents)
   const activeRun = bucket.runs.find((run) => run.status === 'running') ?? null
   const recentRuns = bucket.runs.slice(0, 10)
