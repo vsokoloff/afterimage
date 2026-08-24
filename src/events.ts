@@ -22,6 +22,23 @@ export type AgentRun = {
   events: AgentEvent[]
 }
 
+/** Optional causal links adapters may attach to any event. All fields optional. */
+export type CausalContext = {
+  userInstructionEventId?: string
+  userInstruction?: string
+  systemInstructionEventId?: string
+  systemInstruction?: string
+  developerInstructionEventId?: string
+  developerInstruction?: string
+  modelDecisionEventId?: string
+  modelReasonSummary?: string
+  toolResultEventId?: string
+  testFeedbackEventId?: string
+  errorEventId?: string
+  /** Immediate cause first, then ancestors. */
+  causedByEventIds?: string[]
+}
+
 /** Fields shared by every event on a run. */
 export type AgentEventBase = {
   id: string
@@ -30,6 +47,8 @@ export type AgentEventBase = {
   timestamp: string
   /** Monotonic sequence / turn number within the run */
   sequence: number
+  /** Optional causal context — adapters populate what they know. */
+  causal?: CausalContext
 }
 
 export type PromptEvent = AgentEventBase & {
@@ -42,6 +61,8 @@ export type ModelResponseEvent = AgentEventBase & {
   type: 'model_response'
   model?: string
   text: string
+  /** Short decision/reason summary when the adapter has one. */
+  reasonSummary?: string
 }
 
 export type ToolCallEvent = AgentEventBase & {
@@ -264,4 +285,27 @@ export function agentTraceFromAttempts(
   options?: { idPrefix?: string; timestamp?: string },
 ): { events: FileWriteEvent[] } {
   return { events: fileWritesFromAttempts(runId, attempts, options) }
+}
+
+/** Merge optional causal patches — later values win; causedBy chains append uniquely. */
+export function mergeCausalContext(
+  base: CausalContext | undefined,
+  patch: CausalContext | undefined,
+): CausalContext | undefined {
+  if (!base && !patch) return undefined
+
+  const merged: CausalContext = { ...(base ?? {}), ...(patch ?? {}) }
+  const causedBy = [
+    ...(base?.causedByEventIds ?? []),
+    ...(patch?.causedByEventIds ?? []),
+  ].filter((id, index, all) => all.indexOf(id) === index)
+
+  if (causedBy.length > 0) merged.causedByEventIds = causedBy
+  else delete merged.causedByEventIds
+
+  return Object.keys(merged).length > 0 ? merged : undefined
+}
+
+export function hasCausalContext(event: AgentEvent): boolean {
+  return event.causal !== undefined && Object.keys(event.causal).length > 0
 }

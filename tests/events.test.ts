@@ -21,6 +21,8 @@ import {
   type ToolResultEvent,
   type TestResultEvent,
   type ErrorEvent,
+  hasCausalContext,
+  mergeCausalContext,
 } from '../src/events.ts'
 
 function sampleRun(): AgentRun {
@@ -56,6 +58,7 @@ function sampleRun(): AgentRun {
     sequence: 0,
     model: 'fixture',
     text: 'Editing auth.py',
+    reasonSummary: 'Apply requested auth fix',
   }
 
   const toolCall: ToolCallEvent = {
@@ -173,6 +176,32 @@ test('resolveTraceFileWrites reads run/events; resolveTraceEdits adapts for disp
   assert.deepEqual(resolveTraceFileWrites({}), [])
   assert.deepEqual(resolveTraceEdits({ run }), editsFromAgentRun(run))
   assert.deepEqual(resolveTraceEdits({}), [])
+})
+
+test('optional causal context can be attached without requiring every field', () => {
+  const run = sampleRun()
+  const write = run.events.find((event) => event.id === 'fw-3')
+  assert.ok(write && write.type === 'file_write')
+
+  write.causal = {
+    userInstructionEventId: 'ev-prompt',
+    modelDecisionEventId: 'ev-response',
+    modelReasonSummary: 'Apply requested auth fix',
+    testFeedbackEventId: 'ev-test',
+    errorEventId: 'ev-error',
+    causedByEventIds: ['ev-test'],
+  }
+
+  assert.equal(hasCausalContext(write), true)
+  assert.equal(write.causal?.toolResultEventId, undefined)
+  assert.equal(write.causal?.userInstructionEventId, 'ev-prompt')
+})
+
+test('mergeCausalContext preserves adapter partial updates', () => {
+  assert.deepEqual(
+    mergeCausalContext({ userInstructionEventId: 'a' }, { toolResultEventId: 'b' }),
+    { userInstructionEventId: 'a', toolResultEventId: 'b' },
+  )
 })
 
 test('every event type carries id, runId, timestamp, and sequence', () => {
