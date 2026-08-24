@@ -1,7 +1,9 @@
-import type { LucidObserver } from '../observer.ts'
+import type { LucidObserver, IncidentDetected } from '../observer.ts'
 import type { AgentRun } from '../events.ts'
 import type { LucidStore } from '../store.ts'
+import type { AlertWriter } from './incident-alert.ts'
 import type { WatchFn } from './filesystem-watcher.ts'
+import type { RunIncidentPolicy } from './policy.ts'
 
 /** Options shared by all runtime adapters that wrap an external process or agent. */
 export type RuntimeObserveOptions = {
@@ -15,6 +17,12 @@ export type RuntimeObserveOptions = {
   watchFilesystem?: boolean
   filesystemDebounceMs?: number
   watchFn?: WatchFn
+  /** Default observe — log alert and continue the wrapped process. */
+  incidentPolicy?: RunIncidentPolicy
+  /** Base URL for local incident links (default http://127.0.0.1:3000). */
+  webBaseUrl?: string
+  onIncidentDetected?: (detection: IncidentDetected) => void
+  alertWriter?: AlertWriter
 }
 
 export type RuntimeObserveResult = {
@@ -22,6 +30,7 @@ export type RuntimeObserveResult = {
   exitCode: number | null
   signal: NodeJS.Signals | null
   incidentsOpened: number
+  detections: IncidentDetected[]
 }
 
 /**

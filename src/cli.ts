@@ -13,6 +13,10 @@ import { printTrace } from './display.ts'
 import { agentTraceFromAttempts, fileWritesFromAttempts } from './events.ts'
 import { parseRunArgv } from './runtime/parse.ts'
 import { runCommand } from './runtime/index.ts'
+import {
+  resolveRunIncidentPolicy,
+  resolveWebBaseUrl,
+} from './runtime/policy.ts'
 import { openStore } from './store.ts'
 
 const USAGE = `Lucid hospital (local)
@@ -21,7 +25,8 @@ Usage:
   npm run lucid -- <command>
 
 Commands:
-  run -- <cmd...>  Run a command under Lucid observation (persists a run)
+  run [options] -- <cmd...>
+                   Run a command under Lucid observation (persists a run)
   init             Stub — create a local Lucid config
   attach           Stub — attach Lucid to an agent runtime
   status           Show fixture incident status
@@ -31,7 +36,13 @@ Commands:
   recheck          Verify the post-treatment fixture trace
   departments      List departments and disease status
 
+Run options:
+  --policy observe|terminate-on-critical
+                   Default: observe (alert only; wrapped process keeps running)
+  --web-url URL    Local UI base for incident links (default: http://127.0.0.1:3000)
+
   npm run lucid -- run -- node -e "console.log('hi')"
+  npm run lucid -- run --policy observe -- node ./agent.mjs
 
 Today only Looping → repeated-file-state is shipped.
 Lucid run observes the subprocess only — not agent tool/model internals yet.
@@ -69,6 +80,8 @@ async function cmdRun(): Promise<number> {
     store,
     command: parsed.command,
     cwd: process.cwd(),
+    incidentPolicy: resolveRunIncidentPolicy(parsed.policy),
+    webBaseUrl: resolveWebBaseUrl(parsed.webBaseUrl),
   })
 
   console.log('Lucid run complete')

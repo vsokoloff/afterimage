@@ -1,7 +1,13 @@
-import { spawn as nodeSpawn } from 'node:child_process'
+import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
 
-import { createObserver, type RecordableEvent } from '../observer.ts'
+import { createObserver, type IncidentDetected, type RecordableEvent } from '../observer.ts'
 import { createFilesystemWatcher } from './filesystem-watcher.ts'
+import { printIncidentAlert } from './incident-alert.ts'
+import {
+  resolveRunIncidentPolicy,
+  resolveWebBaseUrl,
+  type RunIncidentPolicy,
+} from './policy.ts'
 import type {
   ProcessRuntimeOptions,
   ProcessSpawnFn,
@@ -41,6 +47,28 @@ function collectStream(
   })
 }
 
+function handleIncidentDetection(
+  detection: IncidentDetected,
+  options: {
+    policy: RunIncidentPolicy
+    webBaseUrl: string
+    alertWriter?: ProcessRuntimeOptions['alertWriter']
+    onIncidentDetected?: ProcessRuntimeOptions['onIncidentDetected']
+    terminate?: () => void
+  },
+): void {
+  options.onIncidentDetected?.(detection)
+
+  const terminating = options.policy === 'terminate-on-critical'
+  printIncidentAlert(detection, options.webBaseUrl, options.policy, options.alertWriter, {
+    terminating,
+  })
+
+  if (terminating) {
+    options.terminate?.()
+  }
+}
+
 /**
  * Subprocess runtime adapter — v1 observation surface.
  * Records process start/end, cwd, stdout/stderr, exit code, timestamps,
@@ -56,15 +84,35 @@ export async function observeProcess(
   const env = options.env ?? process.env
   const command = options.command
   const watchFilesystem = options.watchFilesystem ?? true
+  const incidentPolicy = resolveRunIncidentPolicy(options.incidentPolicy)
+  const webBaseUrl = resolveWebBaseUrl(options.webBaseUrl)
 
   if (!command.length) {
     throw new Error('observeProcess requires a non-empty command')
   }
 
   let incidentsOpened = 0
+  const detections: IncidentDetected[] = []
+  let child: ChildProcess | null = null
+  let terminateRequested = false
+
   const record = async (event: RecordableEvent) => {
     const result = await observer.record(event)
-    incidentsOpened += result.detections.length
+    for (const detection of result.detections) {
+      incidentsOpened += 1
+      detections.push(detection)
+      handleIncidentDetection(detection, {
+        policy: incidentPolicy,
+        webBaseUrl,
+        alertWriter: options.alertWriter,
+        onIncidentDetected: options.onIncidentDetected,
+        terminate: () => {
+          if (!child || terminateRequested) return
+          terminateRequested = true
+          child.kill('SIGTERM')
+        },
+      })
+    }
     return result
   }
 
@@ -89,7 +137,7 @@ export async function observeProcess(
 
   fsWatcher?.start()
 
-  const child = spawn(command, { cwd, env, shell: false })
+  child = spawn(command, { cwd, env, shell: false })
 
   await record({
     type: 'process_start',
@@ -155,6 +203,7 @@ export async function observeProcess(
     exitCode: exit.exitCode,
     signal: exit.signal,
     incidentsOpened,
+    detections,
   }
 }
 

@@ -12,6 +12,26 @@ test('parseRunArgv extracts command after --', () => {
   assert.deepEqual(parseRunArgv(['node', 'cli.js', 'run', '--', 'echo', 'hi']), {
     command: ['echo', 'hi'],
   })
+  assert.deepEqual(
+    parseRunArgv([
+      'node',
+      'cli.js',
+      'run',
+      '--policy',
+      'observe',
+      '--web-url',
+      'http://localhost:4000',
+      '--',
+      'echo',
+      'hi',
+    ]),
+    {
+      command: ['echo', 'hi'],
+      policy: 'observe',
+      webBaseUrl: 'http://localhost:4000',
+    },
+  )
+  assert.equal(parseRunArgv(['node', 'cli.js', 'run', '--policy', 'nope', '--', 'echo']), null)
   assert.equal(parseRunArgv(['node', 'cli.js', 'status']), null)
   assert.equal(parseRunArgv(['node', 'cli.js', 'run']), null)
   assert.equal(parseRunArgv(['node', 'cli.js', 'run', '--']), null)
@@ -104,6 +124,7 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
       command: [process.execPath, '-e', script],
       cwd: storeRoot,
       filesystemDebounceMs: 60,
+      alertWriter: { write: () => {} },
     })
 
     assert.equal(result.exitCode, 0)
@@ -131,6 +152,84 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
     )
     assert.ok(loopIncident)
     assert.equal(loopIncident.status, 'open')
+  } finally {
+    await rm(storeRoot, { recursive: true, force: true })
+  }
+})
+
+test('runCommand prints mid-run incident alert via callback', async () => {
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-alert-'))
+  try {
+    const store = await openStore({ projectRoot: storeRoot })
+    const script = [
+      "const fs = require('fs/promises');",
+      "const target = 'loop-target.txt';",
+      '(async () => {',
+      "  await fs.writeFile(target, 'state-A');",
+      '  await new Promise((r) => setTimeout(r, 150));',
+      "  await fs.writeFile(target, 'state-B');",
+      '  await new Promise((r) => setTimeout(r, 150));',
+      "  await fs.writeFile(target, 'state-A');",
+      '})();',
+    ].join(' ')
+
+    const alerts: string[] = []
+    const result = await runCommand({
+      store,
+      command: [process.execPath, '-e', script],
+      cwd: storeRoot,
+      filesystemDebounceMs: 60,
+      webBaseUrl: 'http://127.0.0.1:3000',
+      alertWriter: { write: (chunk) => alerts.push(chunk) },
+    })
+
+    assert.equal(result.detections.length, 1)
+    assert.match(alerts.join(''), /🚨 Lucid detected a repeated file-state loop/)
+    assert.match(alerts.join(''), /incident:\s+inc_/)
+    assert.match(alerts.join(''), /file:\s+loop-target\.txt/)
+    assert.match(alerts.join(''), /first:\s+turn 2/)
+    assert.match(alerts.join(''), /repeated:\s+turn 4/)
+    assert.match(alerts.join(''), /view:\s+http:\/\/127\.0\.0\.1:3000\/#\/incidents\/inc_/)
+    assert.match(alerts.join(''), /policy:\s+observe — wrapped process continues running/)
+  } finally {
+    await rm(storeRoot, { recursive: true, force: true })
+  }
+})
+
+test('runCommand observe policy does not terminate wrapped process on incident', async () => {
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-observe-'))
+  try {
+    const store = await openStore({ projectRoot: storeRoot })
+    const script = [
+      "const fs = require('fs/promises');",
+      '(async () => {',
+      "  await fs.writeFile('loop-target.txt', 'state-A');",
+      '  await new Promise((r) => setTimeout(r, 120));',
+      "  await fs.writeFile('loop-target.txt', 'state-B');",
+      '  await new Promise((r) => setTimeout(r, 120));',
+      "  await fs.writeFile('loop-target.txt', 'state-A');",
+      '  await new Promise((r) => setTimeout(r, 120));',
+      "  console.log('finished-after-loop');",
+      '})();',
+    ].join(' ')
+
+    const result = await runCommand({
+      store,
+      command: [process.execPath, '-e', script],
+      cwd: storeRoot,
+      filesystemDebounceMs: 60,
+      incidentPolicy: 'observe',
+      alertWriter: { write: () => {} },
+    })
+
+    assert.equal(result.exitCode, 0)
+    assert.match(
+      result.run.events
+        .filter((event) => event.type === 'process_output')
+        .map((event) => (event.type === 'process_output' ? event.text : ''))
+        .join(''),
+      /finished-after-loop/,
+    )
   } finally {
     await rm(storeRoot, { recursive: true, force: true })
   }
