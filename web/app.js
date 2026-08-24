@@ -2,8 +2,25 @@ import { agentCharacter, moodForStatus } from './characters.js'
 
 const content = document.querySelector('#content')
 const crumb = document.querySelector('#crumb')
+const workspaceLabel = document.querySelector('#workspace-label')
 const bootError = document.querySelector('#boot-error')
 const nav = document.querySelector('#nav')
+
+let cachedWorkspace = null
+
+async function loadWorkspace() {
+  if (cachedWorkspace) return cachedWorkspace
+  cachedWorkspace = await fetchJson('/api/workspace')
+  return cachedWorkspace
+}
+
+function renderWorkspaceBanner(workspace) {
+  if (workspaceLabel) {
+    workspaceLabel.textContent = `Workspace: ${workspace.label}`
+    workspaceLabel.title = workspace.root
+  }
+  document.title = `Lucid — ${workspace.label}`
+}
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -188,6 +205,8 @@ function renderAgentCard(agent) {
 }
 
 async function renderAgentsPage() {
+  const workspace = await loadWorkspace()
+  renderWorkspaceBanner(workspace.workspace)
   crumb.textContent = 'Agents'
   content.replaceChildren(el('p', 'activity-line', 'Loading agents…'))
 
@@ -857,6 +876,9 @@ async function render() {
   setActiveNav(route)
 
   try {
+    const workspaceData = await loadWorkspace()
+    renderWorkspaceBanner(workspaceData.workspace)
+
     switch (route.page) {
       case 'agent':
         await renderAgentProfile(route.agentId)

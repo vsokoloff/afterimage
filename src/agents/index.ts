@@ -1,4 +1,4 @@
-export { agentCatalog, resolveAgentCatalog, resolveAgentRuntime } from './catalog.ts'
+export { formatAgentLabel, resolveAgentCatalog, resolveAgentRuntime } from './catalog.ts'
 export {
   fetchActivity,
   fetchAgentProfile,

@@ -1,56 +1,4 @@
-/**
- * Known agent display metadata — character art ids and friendly names only.
- * Operational status always comes from persisted runs/incidents, never from here.
- */
-export type AgentCatalogEntry = {
-  name: string
-  characterId: string
-  role: string
-}
-
-/** Maps raw agent id suffixes and legacy ids to mascot + copy. */
-export const agentCatalog: Record<string, AgentCatalogEntry> = {
-  auth: {
-    name: 'Auth Agent',
-    characterId: 'auth',
-    role: 'Authentication & session coding',
-  },
-  appy: {
-    name: 'Appy',
-    characterId: 'appy',
-    role: 'Application scaffold & wiring',
-  },
-  test: {
-    name: 'Test Agent',
-    characterId: 'test',
-    role: 'Test authoring & regression',
-  },
-  research: {
-    name: 'Research Agent',
-    characterId: 'research',
-    role: 'Docs & prior-art scout',
-  },
-  frontend: {
-    name: 'Frontend Agent',
-    characterId: 'frontend',
-    role: 'UI / dashboard builder',
-  },
-  data: {
-    name: 'Data Agent',
-    characterId: 'data',
-    role: 'Schemas, fixtures, traces',
-  },
-  ops: {
-    name: 'Ops Agent',
-    characterId: 'ops',
-    role: 'Local runtime & process health',
-  },
-  subprocess: {
-    name: 'Subprocess',
-    characterId: 'ops',
-    role: 'Commands observed via lucid run',
-  },
-}
+import type { RepoAgentsFile } from '../workspace/store.ts'
 
 export function formatAgentLabel(raw: string): string {
   const cleaned = raw.replace(/[_-]+/g, ' ').trim()
@@ -58,44 +6,60 @@ export function formatAgentLabel(raw: string): string {
   return cleaned.replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-export function catalogKeyFromAgentId(agentId: string): string {
+function configKeyFromAgentId(agentId: string): string {
   if (agentId.startsWith('codex:')) return agentId.slice('codex:'.length)
-  if (agentId.startsWith('recheck:')) return 'ops'
   return agentId
 }
 
-export function resolveAgentCatalog(agentId: string): {
+/** Resolve display metadata from repo-local `.lucid/agents.json` only. */
+export function resolveAgentCatalog(
+  agentId: string,
+  repoAgents: RepoAgentsFile,
+): {
   name: string
   characterId: string | null
   role: string | null
 } {
-  const key = catalogKeyFromAgentId(agentId)
-  const entry = agentCatalog[key]
-  if (entry) {
-    return { name: entry.name, characterId: entry.characterId, role: entry.role }
+  const key = configKeyFromAgentId(agentId)
+  const configured = repoAgents.agents[key] ?? repoAgents.agents[agentId]
+
+  if (configured?.name) {
+    return {
+      name: configured.name,
+      characterId: configured.characterId ?? null,
+      role: configured.role ?? null,
+    }
   }
 
   if (agentId.startsWith('codex:')) {
     const suffix = agentId.slice('codex:'.length)
     return {
-      name: formatAgentLabel(suffix),
-      characterId: null,
-      role: 'Codex SDK agent',
+      name: configured?.name ?? formatAgentLabel(suffix),
+      characterId: configured?.characterId ?? null,
+      role: configured?.role ?? 'Codex SDK agent',
     }
   }
 
   if (agentId.startsWith('recheck:')) {
     return {
-      name: 'Recheck run',
-      characterId: 'ops',
-      role: 'Incident verification reproduction',
+      name: configured?.name ?? 'Recheck run',
+      characterId: configured?.characterId ?? null,
+      role: configured?.role ?? 'Incident verification reproduction',
+    }
+  }
+
+  if (agentId === 'subprocess') {
+    return {
+      name: configured?.name ?? 'Subprocess',
+      characterId: configured?.characterId ?? null,
+      role: configured?.role ?? 'Commands observed via lucid run',
     }
   }
 
   return {
     name: formatAgentLabel(agentId),
-    characterId: null,
-    role: null,
+    characterId: configured?.characterId ?? null,
+    role: configured?.role ?? null,
   }
 }
 

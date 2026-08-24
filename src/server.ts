@@ -1,18 +1,22 @@
 import { readFile } from 'node:fs/promises'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { fetchIncident, fetchIncidents, fetchRun, fetchRuns } from './api.ts'
 import { fetchActivity, fetchAgentProfile, fetchAgents } from './agents/index.ts'
+import { fetchWorkspace } from './workspace/index.ts'
 import { openStore, type LucidStore } from './store.ts'
 import { buildVisit } from './visit.ts'
 
+/** Lucid package root — web assets ship with the CLI, not the managed repository. */
+const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+
 const staticFiles = new Map([
-  ['/', { file: resolve(process.cwd(), 'web/index.html'), type: 'text/html; charset=utf-8' }],
-  ['/styles.css', { file: resolve(process.cwd(), 'web/styles.css'), type: 'text/css; charset=utf-8' }],
-  ['/app.js', { file: resolve(process.cwd(), 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
-  ['/characters.js', { file: resolve(process.cwd(), 'web/characters.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/', { file: resolve(PACKAGE_ROOT, 'web/index.html'), type: 'text/html; charset=utf-8' }],
+  ['/styles.css', { file: resolve(PACKAGE_ROOT, 'web/styles.css'), type: 'text/css; charset=utf-8' }],
+  ['/app.js', { file: resolve(PACKAGE_ROOT, 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/characters.js', { file: resolve(PACKAGE_ROOT, 'web/characters.js'), type: 'text/javascript; charset=utf-8' }],
 ])
 
 export type ServerContext = {
@@ -22,9 +26,12 @@ export type ServerContext = {
 export type StartServerOptions = {
   port?: number
   host?: string
+  /** Starting directory for resolving the workspace (default: process.cwd()). */
+  cwd?: string
+  /** Override project root (parent of `.lucid/`). */
+  projectRoot?: string
   /** Override `.lucid` location (tests). */
   storeRoot?: string
-  projectRoot?: string
   /** Pre-opened store; overrides storeRoot/projectRoot. */
   store?: LucidStore
 }
@@ -73,6 +80,11 @@ export async function handleRequest(
   try {
     if (request.method !== 'GET') {
       methodNotAllowed(response)
+      return
+    }
+
+    if (url.pathname === '/api/workspace') {
+      sendJson(response, 200, await fetchWorkspace(context.store))
       return
     }
 
@@ -158,12 +170,13 @@ export function createServerInstance(context: ServerContext) {
 
 export async function startServer(
   options: StartServerOptions = {},
-): Promise<{ url: string; server: Server; store: LucidStore }> {
+): Promise<{ url: string; server: Server; store: LucidStore; workspace: LucidStore['workspace'] }> {
   const store =
     options.store ??
     (await openStore({
       storeRoot: options.storeRoot,
       projectRoot: options.projectRoot,
+      cwd: options.cwd ?? process.env.LUCID_PROJECT_ROOT,
     }))
   const context: ServerContext = { store }
 
@@ -190,7 +203,12 @@ export async function startServer(
     throw new Error('Server did not bind a TCP port.')
   }
 
-  return { url: `http://${host}:${address.port}`, server, store }
+  return {
+    url: `http://${host}:${address.port}`,
+    server,
+    store,
+    workspace: store.workspace,
+  }
 }
 
 function isDirectRun(): boolean {
@@ -199,6 +217,8 @@ function isDirectRun(): boolean {
 }
 
 if (isDirectRun()) {
-  const { url } = await startServer()
+  const cwd = process.env.LUCID_PROJECT_ROOT ?? process.cwd()
+  const { url, workspace } = await startServer({ cwd })
   console.log(`Lucid: ${url}`)
+  console.log(`Workspace: ${workspace.label}`)
 }

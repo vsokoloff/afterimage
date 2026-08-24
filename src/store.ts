@@ -7,16 +7,24 @@ import { newId } from './ids.ts'
 import type { Incident, IncidentStatus } from './incident.ts'
 import type { StructuredTreatment } from './treatment/types.ts'
 import type { TreatmentApplicationRecord } from './treatment/adapters/types.ts'
+import { ensureWorkspace } from './workspace/store.ts'
+import { resolveProjectRoot } from './workspace/identity.ts'
+import type { Workspace } from './workspace/identity.ts'
 
 export type LucidStore = {
   /** Absolute path to the `.lucid` directory. */
   root: string
+  /** Absolute path to the repository / project root. */
+  projectRoot: string
+  workspace: Workspace
 }
 
 export type OpenStoreOptions = {
-  /** Project directory that should contain `.lucid/` (default: process.cwd()). */
+  /** Starting directory for resolving the project root (default: process.cwd()). */
+  cwd?: string
+  /** Project directory that should contain `.lucid/` (default: git root or cwd). */
   projectRoot?: string
-  /** Absolute `.lucid` path — overrides projectRoot. Useful in tests. */
+  /** Absolute `.lucid` path — overrides default layout. Useful in tests. */
   storeRoot?: string
 }
 
@@ -73,14 +81,18 @@ async function readJsonl<T>(filePath: string): Promise<T[]> {
   return lines.map((line) => JSON.parse(line) as T)
 }
 
-/** Open (and create) a local `.lucid` store under the project. */
+/** Open (and create) a local `.lucid` store scoped to one repository. */
 export async function openStore(options: OpenStoreOptions = {}): Promise<LucidStore> {
-  const root = options.storeRoot
-    ? path.resolve(options.storeRoot)
-    : path.resolve(options.projectRoot ?? process.cwd(), '.lucid')
-  const store = { root }
-  await ensureDirs(store)
-  return store
+  const projectRoot = path.resolve(
+    options.projectRoot ??
+      (options.storeRoot
+        ? path.dirname(path.resolve(options.storeRoot))
+        : await resolveProjectRoot(options.cwd)),
+  )
+  const root = options.storeRoot ? path.resolve(options.storeRoot) : path.join(projectRoot, '.lucid')
+  await mkdir(root, { recursive: true })
+  const workspace = await ensureWorkspace({ root, projectRoot })
+  return { root, projectRoot, workspace }
 }
 
 export type CreateRunInput = {

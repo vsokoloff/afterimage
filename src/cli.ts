@@ -17,6 +17,8 @@ import {
   resolveWebBaseUrl,
 } from './runtime/policy.ts'
 import { openStore } from './store.ts'
+import { initWorkspaceStore } from './workspace/store.ts'
+import { startServer } from './server.ts'
 import { parseFixArgv, runFixCommand } from './treatment/index.ts'
 import { parseRecheckArgv, runRecheckCommand } from './recheck/index.ts'
 
@@ -28,7 +30,8 @@ Usage:
 Commands:
   run [options] -- <cmd...>
                    Run a command under Lucid observation (persists a run)
-  init             Stub — create a local Lucid config
+  init             Initialize .lucid/ for this repository
+  open             Open the Lucid dashboard for this repository
   attach           Stub — attach Lucid to an agent runtime
   status           Show fixture incident status
   doctor           Run Looping → repeated-file-state on the fixture
@@ -43,6 +46,8 @@ Run options:
                    Default: observe (alert only; wrapped process keeps running)
   --web-url URL    Local UI base for incident links (default: http://127.0.0.1:3000)
 
+  npm run lucid -- init
+  npm run lucid -- open
   npm run lucid -- run -- node -e "console.log('hi')"
   npm run lucid -- run --policy observe -- node ./agent.mjs
   npm run lucid -- fix inc_abc123
@@ -68,6 +73,36 @@ function fixtureBefore() {
   })
 }
 
+async function cmdInit(): Promise<number> {
+  const store = await openStore({ cwd: process.cwd() })
+  const { workspace } = await initWorkspaceStore(store)
+  console.log('Lucid initialized')
+  console.log(`  workspace: ${workspace.label}`)
+  console.log(`  store:     ${store.root}`)
+  console.log(`  id:        ${workspace.id}`)
+  return 0
+}
+
+async function cmdOpen(): Promise<number> {
+  const store = await openStore({ cwd: process.cwd() })
+  await initWorkspaceStore(store)
+
+  const requested = Number.parseInt(process.env.PORT ?? '3000', 10)
+  const host = process.env.LUCID_HOST ?? '127.0.0.1'
+
+  const { url, workspace } = await startServer({
+    cwd: process.cwd(),
+    store,
+    port: requested,
+    host,
+  })
+
+  console.log(`Lucid: ${url}`)
+  console.log(`Workspace: ${workspace.label}`)
+  console.log('Press Ctrl+C to stop.')
+  return 0
+}
+
 async function cmdRun(): Promise<number> {
   const parsed = parseRunArgv(process.argv)
   if (!parsed) {
@@ -75,7 +110,7 @@ async function cmdRun(): Promise<number> {
     return 1
   }
 
-  const store = await openStore()
+  const store = await openStore({ cwd: process.cwd() })
   const result = await runCommand({
     store,
     command: parsed.command,
@@ -158,7 +193,7 @@ async function cmdFix(): Promise<number> {
     return 1
   }
 
-  const store = await openStore()
+  const store = await openStore({ cwd: process.cwd() })
   const result = await runFixCommand({
     incidentId: parsed.incidentId,
     store,
@@ -183,7 +218,7 @@ async function cmdRecheck(): Promise<number> {
     return 1
   }
 
-  const store = await openStore()
+  const store = await openStore({ cwd: process.cwd() })
   try {
     const result = await runRecheckCommand({
       incidentId: parsed.incidentId,
@@ -213,8 +248,8 @@ function cmdDepartments(): void {
 
 function cmdStub(name: string): void {
   console.log(`${name}: not implemented yet.`)
-  console.log('Lucid is local-first; init/attach will write a config and')
-  console.log('hook an agent runtime so the hospital can observe quietly.')
+  console.log('Lucid is local-first; attach will hook an agent runtime')
+  console.log('so the hospital can observe quietly.')
 }
 
 async function main(): Promise<void> {
@@ -230,7 +265,10 @@ async function main(): Promise<void> {
       process.exitCode = await cmdRun()
       break
     case 'init':
-      cmdStub('init')
+      process.exitCode = await cmdInit()
+      break
+    case 'open':
+      process.exitCode = await cmdOpen()
       break
     case 'attach':
       cmdStub('attach')

@@ -1,6 +1,7 @@
 import type { AgentEvent, AgentRun } from '../events.ts'
 import type { Incident } from '../incident.ts'
 import { getRun, listIncidents, listRuns, type LucidStore } from '../store.ts'
+import { loadRepoAgents } from '../workspace/store.ts'
 import { resolveAgentCatalog, resolveAgentRuntime } from './catalog.ts'
 
 export type AgentOperationalStatus = 'working' | 'idle' | 'unhealthy' | 'stopped'
@@ -167,8 +168,12 @@ async function loadAgentBuckets(store: LucidStore): Promise<Map<string, AgentBuc
   return buckets
 }
 
-function buildAgentSummary(bucket: AgentBucket, now = Date.now()): AgentSummary {
-  const catalog = resolveAgentCatalog(bucket.agentId)
+function buildAgentSummary(
+  bucket: AgentBucket,
+  repoAgents: Awaited<ReturnType<typeof loadRepoAgents>>,
+  now = Date.now(),
+): AgentSummary {
+  const catalog = resolveAgentCatalog(bucket.agentId, repoAgents)
   const activeRun = bucket.runs.find((run) => run.status === 'running') ?? null
   const lastRun = bucket.runs[0] ?? null
   const openIncidents = bucket.incidents.filter(isOpenIncident)
@@ -195,9 +200,10 @@ function buildAgentSummary(bucket: AgentBucket, now = Date.now()): AgentSummary 
 }
 
 export async function fetchAgents(store: LucidStore): Promise<AgentsListResponse> {
+  const repoAgents = await loadRepoAgents(store)
   const buckets = await loadAgentBuckets(store)
   const agents = [...buckets.values()]
-    .map((bucket) => buildAgentSummary(bucket))
+    .map((bucket) => buildAgentSummary(bucket, repoAgents))
     .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt))
 
   return { agents }
@@ -211,7 +217,8 @@ export async function fetchAgentProfile(
   const bucket = buckets.get(agentId)
   if (!bucket) return null
 
-  const agent = buildAgentSummary(bucket)
+  const repoAgents = await loadRepoAgents(store)
+  const agent = buildAgentSummary(bucket, repoAgents)
   const activeRun = bucket.runs.find((run) => run.status === 'running') ?? null
   const recentRuns = bucket.runs.slice(0, 10)
 
