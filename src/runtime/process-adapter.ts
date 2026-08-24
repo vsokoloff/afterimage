@@ -1,6 +1,7 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 
 import { createObserver, type RecordableEvent } from '../observer.ts'
+import { createFilesystemWatcher } from './filesystem-watcher.ts'
 import type {
   ProcessRuntimeOptions,
   ProcessSpawnFn,
@@ -42,8 +43,8 @@ function collectStream(
 
 /**
  * Subprocess runtime adapter — v1 observation surface.
- * Records process start/end, cwd, stdout/stderr, exit code, timestamps.
- * Does not claim visibility into agent tool calls or model turns.
+ * Records process start/end, cwd, stdout/stderr, exit code, timestamps,
+ * and workspace file writes via filesystem observation.
  */
 export async function observeProcess(
   options: ProcessRuntimeOptions,
@@ -54,6 +55,7 @@ export async function observeProcess(
   const cwd = options.cwd ?? process.cwd()
   const env = options.env ?? process.env
   const command = options.command
+  const watchFilesystem = options.watchFilesystem ?? true
 
   if (!command.length) {
     throw new Error('observeProcess requires a non-empty command')
@@ -67,6 +69,25 @@ export async function observeProcess(
   }
 
   await observer.startRun({ agentId: options.agentId ?? 'subprocess' })
+
+  const fsWatcher = watchFilesystem
+    ? createFilesystemWatcher({
+        workspaceRoot: cwd,
+        debounceMs: options.filesystemDebounceMs,
+        watchFn: options.watchFn,
+        onWrite: async ({ path: filePath, content, hash }) => {
+          await record({
+            type: 'file_write',
+            path: filePath,
+            content,
+            hash,
+            ok: true,
+          })
+        },
+      })
+    : null
+
+  fsWatcher?.start()
 
   const child = spawn(command, { cwd, env, shell: false })
 
@@ -95,6 +116,12 @@ export async function observeProcess(
   )
 
   await Promise.all([stdoutDone, stderrDone])
+
+  if (fsWatcher) {
+    const debounceMs = options.filesystemDebounceMs ?? 100
+    await new Promise((resolve) => setTimeout(resolve, debounceMs + 75))
+    await fsWatcher.stop()
+  }
 
   const stdout = stdoutChunks.join('')
   const stderr = stderrChunks.join('')

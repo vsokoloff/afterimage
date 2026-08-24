@@ -6,7 +6,7 @@ import test from 'node:test'
 
 import { parseRunArgv } from '../src/runtime/parse.ts'
 import { runCommand } from '../src/runtime/index.ts'
-import { getRun, openStore } from '../src/store.ts'
+import { getRun, listIncidents, openStore } from '../src/store.ts'
 
 test('parseRunArgv extracts command after --', () => {
   assert.deepEqual(parseRunArgv(['node', 'cli.js', 'run', '--', 'echo', 'hi']), {
@@ -20,7 +20,7 @@ test('parseRunArgv extracts command after --', () => {
 test('runCommand persists process lifecycle events', async () => {
   const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-'))
   try {
-    const store = await openStore({ storeRoot })
+    const store = await openStore({ projectRoot: storeRoot })
     const script = "console.log('lucid-run-hello'); console.error('lucid-run-warn');"
     const result = await runCommand({
       store,
@@ -34,7 +34,7 @@ test('runCommand persists process lifecycle events', async () => {
 
     const reloaded = await getRun(store, result.run.id)
     assert.ok(reloaded)
-    assert.equal(reloaded.events.length, 4)
+    assert.equal(reloaded.events.filter((e) => e.type !== 'file_write').length, 4)
 
     const start = reloaded.events.find((e) => e.type === 'process_start')
     assert.ok(start && start.type === 'process_start')
@@ -66,7 +66,7 @@ test('runCommand persists process lifecycle events', async () => {
 test('runCommand records non-zero exit as failed run', async () => {
   const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-fail-'))
   try {
-    const store = await openStore({ storeRoot })
+    const store = await openStore({ projectRoot: storeRoot })
     const result = await runCommand({
       store,
       command: [process.execPath, '-e', 'process.exit(2)'],
@@ -78,6 +78,59 @@ test('runCommand records non-zero exit as failed run', async () => {
     const end = result.run.events.find((e) => e.type === 'process_end')
     assert.ok(end && end.type === 'process_end')
     assert.equal(end.exitCode, 2)
+  } finally {
+    await rm(storeRoot, { recursive: true, force: true })
+  }
+})
+
+test('runCommand observes A → B → A file writes and opens an incident', async () => {
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-loop-'))
+  try {
+    const store = await openStore({ projectRoot: storeRoot })
+    const script = [
+      "const fs = require('fs/promises');",
+      "const target = 'loop-target.txt';",
+      '(async () => {',
+      "  await fs.writeFile(target, 'state-A');",
+      '  await new Promise((r) => setTimeout(r, 150));',
+      "  await fs.writeFile(target, 'state-B');",
+      '  await new Promise((r) => setTimeout(r, 150));',
+      "  await fs.writeFile(target, 'state-A');",
+      '})();',
+    ].join(' ')
+
+    const result = await runCommand({
+      store,
+      command: [process.execPath, '-e', script],
+      cwd: storeRoot,
+      filesystemDebounceMs: 60,
+    })
+
+    assert.equal(result.exitCode, 0)
+    assert.ok(result.incidentsOpened >= 1)
+
+    const reloaded = await getRun(store, result.run.id)
+    assert.ok(reloaded)
+
+    const fileWrites = reloaded.events.filter((e) => e.type === 'file_write')
+    assert.ok(fileWrites.length >= 3)
+
+    const loopWrites = fileWrites.filter(
+      (e) => e.type === 'file_write' && e.path === 'loop-target.txt',
+    )
+    assert.ok(loopWrites.length >= 3)
+
+    const contents = loopWrites.map((e) => (e.type === 'file_write' ? e.content : ''))
+    assert.ok(contents.includes('state-A'))
+    assert.ok(contents.includes('state-B'))
+
+    const incidents = await listIncidents(store)
+    const loopIncident = incidents.find(
+      (incident) =>
+        incident.runId === result.run.id && incident.disease === 'repeated-file-state',
+    )
+    assert.ok(loopIncident)
+    assert.equal(loopIncident.status, 'open')
   } finally {
     await rm(storeRoot, { recursive: true, force: true })
   }

@@ -1,6 +1,7 @@
 import type { LucidObserver } from '../observer.ts'
 import type { AgentRun } from '../events.ts'
 import type { LucidStore } from '../store.ts'
+import type { WatchFn } from './filesystem-watcher.ts'
 
 /** Options shared by all runtime adapters that wrap an external process or agent. */
 export type RuntimeObserveOptions = {
@@ -10,6 +11,10 @@ export type RuntimeObserveOptions = {
   cwd?: string
   env?: NodeJS.ProcessEnv
   agentId?: string
+  /** Watch workspace for file writes while the process runs (process adapter). */
+  watchFilesystem?: boolean
+  filesystemDebounceMs?: number
+  watchFn?: WatchFn
 }
 
 export type RuntimeObserveResult = {
