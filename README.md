@@ -1,111 +1,189 @@
-# Afterimage (Lucid)
+# Lucid (Afterimage)
 
-**Local-first Lucid** — start from **open incidents**, diagnose in **Hospital**.
+**Local-first hospital for coding-agent failure modes.**
 
-`lucid open` → local dashboard. No accounts, no SaaS login.
+Lucid watches what your agent actually does (file writes, prompts, tools, tests), detects known “diseases,” and shows evidence you can trust — without sending your code to a SaaS.
 
-Hospital language is only in feature labels. The chrome is a developer tool (Linear/Sentry-style), not a medical website.
+No accounts. No cloud login. Data stays in your repo under `.lucid/`.
 
-> **Today’s ship:** Looping → repeated file state — detect → diagnose → prescribe → recheck. Auth Agent’s Hospital path is grounded in the real detector via `GET /api/visit`. Other agents and departments are clearly labeled mock/stub.
+If you saw this on LinkedIn: clone it, try it on a throwaway project, then **add the weird edge case you hit**. That’s the point.
+
+## What it detects today (shipped)
+
+| Disease | Department | Signal (deterministic) |
+|---|---|---|
+| `repeated-file-state` | Looping | Same file returns to a prior content hash (A → B → A) |
+| `scope-explosion` | Scope | Localized task blows out across many files/dirs |
+| `prior-fix-regressed` | Memory | A named test was passing, then fails later in the run |
+| `instruction-amnesia` | Instructions | Agent violates “only edit X” / “do not touch Y” / “do not use Z” |
+| `redundant-rewrite` | Cost | New file duplicates another path’s exact (or structural) content |
+
+Detection does **not** need an API key. Optional LLM narrative can come later; the abnormality itself is rule-based.
+
+## 10-minute try (new machine)
+
+**Needs:** Node 20+, Git, and (for Cursor integration) [Cursor](https://cursor.com).
+
+```sh
+git clone https://github.com/vsokoloff/afterimage.git
+cd afterimage
+npm install
+npm test                 # should be green
+npm run build
+```
+
+### A) Fixture demo (no Cursor required)
+
+```sh
+npm run demo             # terminal + local UI
+# or
+npm run web              # http://127.0.0.1:3000
+npm run lucid -- doctor
+npm run lucid -- departments
+```
+
+### B) Watch a real project with Cursor (recommended)
+
+```sh
+# still in the afterimage clone (or npm link once for a global `lucid`)
+npm link                 # optional
+
+cd /path/to/some-other-project
+lucid init               # creates .lucid/
+lucid attach cursor      # installs .cursor/hooks* — keep prompting normally
+lucid open               # dashboard at http://127.0.0.1:3000
+```
+
+Without `npm link`:
+
+```sh
+npm --prefix /path/to/afterimage run lucid -- init
+npm --prefix /path/to/afterimage run lucid -- attach cursor
+npm --prefix /path/to/afterimage run lucid -- open
+```
+
+Then in **Cursor**, open that project and use Agent as usual. Reload the window once if hooks don’t appear.
+
+**Smoke prompt** (forces a loop):
+
+```text
+Create loop-demo.txt with content A.
+Change it to B.
+Change it back to exactly A.
+Stop.
+```
+
+You should see **Lucid Kitty** meow (Hooks output / optional macOS notification), an incident under `.lucid/incidents/`, and the case in the dashboard.
+
+> Run `attach cursor` on **each machine** after `npm run build`. The hook points at that machine’s `afterimage/dist` path.
 
 ## Mental model
 
 ```text
-Incidents (default) → Hospital diagnostics
-        └── Agents / Activity / Memory (secondary)
-                OBSERVE → TEST → ABNORMALITY → EVIDENCE → DIAGNOSIS → TREATMENT → RECHECK
+OBSERVE → DETECT → EVIDENCE → DIAGNOSE → RECOMMEND → RECHECK
 ```
 
-- **Incidents** — open failures; open one to run diagnostics
-- **Hospital** — progressive department tests; real looping evidence for Auth Agent
-- **Agents** — optional roster / routing (not the front door)
-- **`lucid fix`** — CLI prints treatment; the UI does **not** fake a web patch
+Each disease is a small plugin:
 
-## Demo path
+```ts
+detect(trace)           // abnormality | null   (deterministic)
+diagnose(trace)         // evidence + diagnosis
+recommendFix(diagnosis) // treatment plan (review required by default)
+verify(before, after)   // recheck
+```
 
-1. `npm run demo` or `npm run web` → open dashboard  
-2. **Incidents** → **Auth Agent** (open failure) → **Open diagnostics**  
-3. **Run diagnostics** → A→B→A hashes → root cause → treatment  
-4. Copy/run `npm run lucid -- fix` → **Mark treatment applied (simulate)**  
-5. **Recheck** → pass → **Clear & return** → **Back to Incidents**
+## Privacy
 
-## Run
-
-Node 20+.
+By default Lucid stores **hashes + metadata** under `.lucid/`, not full file bodies.
 
 ```sh
-npm install
-npm test
-npm run web           # Lucid UI (starts on Incidents)
-npm run demo          # terminal trace + open UI
+LUCID_STORE_FILE_CONTENT=1 lucid run -- …   # opt in to retain bodies
+```
+
+Nothing is uploaded. The dashboard binds to `127.0.0.1`.
+
+## Add your own edge case (contribute a disease)
+
+We want failure modes from real agent runs. If your agent did something dumb that Lucid missed, turn it into a detector.
+
+### 1. Pick a department (or add one)
+
+Existing: `looping`, `memory`, `instructions`, `scope`, `tools`, `cost`.
+
+### 2. Scaffold
+
+```text
+src/departments/<dept>/<your-disease>/
+  detect.ts      # pure functions + tests-first signals
+  diagnose.ts
+  recommend.ts
+  verify.ts
+  index.ts       # export DiseasePlugin with status: 'shipped' | 'stub'
+```
+
+Mirror [`src/departments/looping/repeated-file-state/`](src/departments/looping/repeated-file-state/) or [`src/departments/scope/scope-explosion/`](src/departments/scope/scope-explosion/).
+
+### 3. Rules for a good PR
+
+- **Tests first** — positive case, negative case, and one “don’t confuse with another disease” case
+- **Deterministic detect** — no API key required to decide the abnormality
+- **Stable evidence string** — machine-readable, no locale fluff
+- **Local-only** — no SaaS calls in the detector path
+- Keep existing shipped disease tests green (`npm test`)
+- Register the plugin in the department `index.ts` / [`src/departments/index.ts`](src/departments/index.ts)
+
+### 4. Idea starters (open for grabs)
+
+- Agent re-reads the same file 20× with no edit
+- Oscillation between two approaches without progress
+- “Do not use shell” then shells anyway (tool flavor of instruction-amnesia)
+- Cross-run regressions (prior green on an earlier run)
+- Semantic near-duplicates (after exact/structural)
+
+Open an issue with a short repro (“agent did X, expected Lucid to flag Y”) if you’re not ready to code.
+
+## CLI cheat sheet
+
+```sh
+npm run lucid -- init
+npm run lucid -- attach cursor
+npm run lucid -- open
 npm run lucid -- departments
 npm run lucid -- doctor
 npm run lucid -- inspect
-npm run lucid -- fix
-npm run lucid -- recheck
+npm run lucid -- run -- <command>          # wrap a subprocess + FS watcher
+npm run lucid -- otel                      # OTLP/HTTP GenAI on :4318
+npm run lucid -- fix <incident-id>
+npm run lucid -- recheck <incident-id>
 ```
 
-Dashboard: [http://127.0.0.1:3000](http://127.0.0.1:3000)
+## Observation sources
 
-### Privacy defaults
-
-Lucid persists run events under `.lucid/` as **hashes + metadata by default** — not full file source. Loop detection only needs SHA-256 digests.
-
-To retain full file bodies on `file_write` events (debugging):
-
-```sh
-LUCID_STORE_FILE_CONTENT=1 npm run lucid -- run -- …your command…
-```
-
-Or open the store / observe APIs with `retainFileContent: true`.
-
-### Real vs mock
-
-| Piece | Status |
-|---|---|
-| Looping / repeated-file-state detector | **Real** |
-| `GET /api/visit` (Auth Agent hospital) | **Real** |
-| Root cause + treatment text | **Case fixture** (not UI invention) |
-| `lucid fix` | **Real CLI print**; no auto-apply |
-| Other agents (Appy, Test, …) | **Mock** |
-| Memory / Instructions / Tools / Cost depts | **Stub / mock** (labeled in UI) |
-| “Mark treatment applied” | **Demo simulate** only |
-
-## Departments
-
-| Department | Focus | Status |
+| Source | Status | How |
 |---|---|---|
-| **Looping** | File-state loops, … | **repeated-file-state shipped** |
-| Memory | Forgotten failures, … | Stub |
-| Instructions | Conflicting goals, … | Stub |
-| Tools | Bad schemas, … | Stub |
-| Cost / Efficiency | Token explosion, … | Stub |
+| **Cursor Desktop hooks** | Shipped | `lucid attach cursor` |
+| Process + filesystem | Shipped | `lucid run -- …` |
+| Codex SDK stream | Shipped | adapter under `src/runtime/codex/` |
+| OpenTelemetry GenAI | Shipped | `lucid otel` → `:4318` |
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md). Observation contract and OTEL path: [docs/ingestion.md](./docs/ingestion.md).
-
-## Observation
-
-Host adapters (process, Codex) and **OpenTelemetry GenAI** all feed `AgentEvent` via `LucidObserver`. Frameworks that already emit GenAI spans can point OTLP/HTTP at Lucid instead of needing a per-SDK adapter:
-
-```sh
-npm run lucid -- otel          # listen 127.0.0.1:4318 /v1/traces
-```
+Details: [docs/ingestion.md](./docs/ingestion.md). Architecture: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Layout
 
 ```text
 src/
-  departments/                 Hospital plugin system
-    looping/repeated-file-state/
-  events.ts                    AgentEvent contract
-  runtime/                     process, Codex, OTEL adapters
-  case.ts                      Auth Agent fixture
-  visit.ts                     GET /api/visit builder
-  server.ts                    Static UI + visit API
-docs/
-  ingestion.md                 Ingestion standard (adapters + OTEL)
-web/
-  index.html                   Shell (Incidents-first nav)
-  app.js                       SPA routes + Hospital UX
-  data/agents.js               Agent / incident fixtures
+  departments/           # disease plugins (contribute here)
+  runtime/cursor/        # Cursor hooks bridge + Lucid Kitty alerts
+  runtime/codex/         # Codex adapter
+  runtime/otel/          # OTLP GenAI ingest
+  observer.ts            # persist events → run detectors → open incidents
+  events.ts              # AgentEvent contract
+web/                     # local Incidents / Hospital UI
+tests/                   # fixture + adapter + disease tests
 ```
+
+## License / vibe
+
+Local-first, open contribution, hospital metaphor for agent failures — not a medical product and not a hosted platform.
+
+PRs that add a real edge case with tests beat PRs that only polish copy.

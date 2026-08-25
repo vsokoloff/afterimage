@@ -128,10 +128,11 @@ See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute ma
 
 | Command | Today |
 |---|---|
-| `lucid init` / `attach` | Stub |
+| `lucid init` | Initialize `.lucid/` for this repository |
+| `lucid attach cursor` | Install Cursor hooks (normal Agent chats → Lucid) |
 | `lucid otel` | Local OTLP/HTTP GenAI traces → AgentEvent |
 | `lucid status` | Fixture status |
-| `lucid doctor` | Run primary disease on fixture |
+| `lucid doctor` | Run primary disease on the fixture |
 | `lucid inspect` | Evidence + diagnosis |
 | `lucid fix` | Print treatment; no auto-apply |
 | `lucid recheck` | Verify post-treatment fixture |
