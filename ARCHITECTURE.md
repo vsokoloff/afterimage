@@ -109,7 +109,7 @@ Auth Agent incident fields:
 
 ## Observation / ingestion
 
-Afterimage's durable contract is **`AgentEvent`**. Host adapters (process, Codex, future Cursor/Claude) and the **OpenTelemetry GenAI** path all normalize to `RecordableEvent` → `LucidObserver`. Detectors never import adapters.
+Afterimage's durable contract is **`AgentEvent`**. Host adapters (process, Codex, future Cursor/Claude) and the **OpenTelemetry GenAI** path all normalize to `RecordableEvent` → `AfterimageObserver`. Detectors never import adapters.
 
 See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute mapping, and `afterimage otel` (OTLP/HTTP `:4318`).
 
@@ -118,7 +118,7 @@ See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute ma
 **Looping → repeated-file-state**:
 
 1. Hash full file contents after each successful write (SHA-256).
-2. Persist **hash + metadata** under `.lucid/` by default (not full source). Opt in with `LUCID_STORE_FILE_CONTENT=1` / `retainFileContent: true`.
+2. Persist **hash + metadata** under `.afterimage/` by default (not full source). Opt in with `AFTERIMAGE_STORE_FILE_CONTENT=1` (or legacy `LUCID_STORE_FILE_CONTENT=1`) / `retainFileContent: true`.
 3. If file `F` returns to a prior hash → abnormality.
 4. Fixture root cause: conflicting instructions.
 5. Prescribed treatment: resolve instruction conflict (report conflict instead of reverting).
@@ -128,7 +128,7 @@ See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute ma
 
 | Command | Today |
 |---|---|
-| `afterimage init` | Initialize `.lucid/` for this repository |
+| `afterimage init` | Initialize `.afterimage/` for this repository |
 | `afterimage attach cursor` | Install Cursor hooks (normal Agent chats → Afterimage) |
 | `afterimage otel` | Local OTLP/HTTP GenAI traces → AgentEvent |
 | `afterimage status` | Fixture status |

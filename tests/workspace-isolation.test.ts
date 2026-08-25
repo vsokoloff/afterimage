@@ -18,7 +18,7 @@ const execFileAsync = promisify(execFile)
 
 async function initGitRepo(dir: string, remoteUrl?: string) {
   await execFileAsync('git', ['init'], { cwd: dir })
-  await execFileAsync('git', ['config', 'user.email', 'lucid@test.local'], { cwd: dir })
+  await execFileAsync('git', ['config', 'user.email', 'afterimage@test.local'], { cwd: dir })
   await execFileAsync('git', ['config', 'user.name', 'Afterimage Test'], { cwd: dir })
   await writeFile(path.join(dir, 'README.md'), '# test repo\n', 'utf8')
   await execFileAsync('git', ['add', 'README.md'], { cwd: dir })
@@ -41,7 +41,7 @@ test('parseRemoteLabel extracts owner/repo from https and ssh remotes', () => {
 })
 
 test('resolveProjectRoot prefers git root over subdirectory cwd', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-git-root-'))
+  const root = await mkdtemp(path.join(os.tmpdir(), 'afterimage-git-root-'))
   try {
     await initGitRepo(root)
     const rootReal = await realpath(root)
@@ -54,8 +54,8 @@ test('resolveProjectRoot prefers git root over subdirectory cwd', async () => {
 })
 
 test('Repo A events and agents do not appear in Repo B', async () => {
-  const repoA = await mkdtemp(path.join(os.tmpdir(), 'lucid-repo-a-'))
-  const repoB = await mkdtemp(path.join(os.tmpdir(), 'lucid-repo-b-'))
+  const repoA = await mkdtemp(path.join(os.tmpdir(), 'afterimage-repo-a-'))
+  const repoB = await mkdtemp(path.join(os.tmpdir(), 'afterimage-repo-b-'))
   try {
     await initGitRepo(repoA, 'https://github.com/test/repo-a.git')
     await initGitRepo(repoB, 'https://github.com/test/repo-b.git')
@@ -86,7 +86,7 @@ test('Repo A events and agents do not appear in Repo B', async () => {
 })
 
 test('agent appears from repo config before any run, and uses config name after runs', async () => {
-  const repo = await mkdtemp(path.join(os.tmpdir(), 'lucid-repo-config-'))
+  const repo = await mkdtemp(path.join(os.tmpdir(), 'afterimage-repo-config-'))
   try {
     await initGitRepo(repo)
     const store = await openStore({ projectRoot: repo })
@@ -120,8 +120,8 @@ test('agent appears from repo config before any run, and uses config name after 
 })
 
 test('opening Afterimage from each repo serves the correct workspace', async () => {
-  const repoA = await mkdtemp(path.join(os.tmpdir(), 'lucid-open-a-'))
-  const repoB = await mkdtemp(path.join(os.tmpdir(), 'lucid-open-b-'))
+  const repoA = await mkdtemp(path.join(os.tmpdir(), 'afterimage-open-a-'))
+  const repoB = await mkdtemp(path.join(os.tmpdir(), 'afterimage-open-b-'))
   try {
     await initGitRepo(repoA, 'https://github.com/acme/project-a.git')
     await initGitRepo(repoB, 'https://github.com/acme/project-b.git')
@@ -151,7 +151,7 @@ test('opening Afterimage from each repo serves the correct workspace', async () 
 })
 
 test('resolveWorkspace falls back to folder name without git remote', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'lucid-no-remote-'))
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'afterimage-no-remote-'))
   try {
     const workspace = await resolveWorkspace(dir)
     assert.equal(workspace.label, path.basename(dir))
@@ -161,8 +161,8 @@ test('resolveWorkspace falls back to folder name without git remote', async () =
   }
 })
 
-test('initWorkspaceStore creates repo-local lucid directories', async () => {
-  const repo = await mkdtemp(path.join(os.tmpdir(), 'lucid-init-'))
+test('initWorkspaceStore creates repo-local afterimage directories', async () => {
+  const repo = await mkdtemp(path.join(os.tmpdir(), 'afterimage-init-'))
   try {
     const store = await openStore({ projectRoot: repo })
     await initWorkspaceStore(store)

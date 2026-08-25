@@ -9,7 +9,7 @@ import { createObserver } from '../src/observer.ts'
 import { getIncident, getRun, listIncidents, openStore } from '../src/store.ts'
 
 async function withTempStore<T>(fn: (storeRoot: string) => Promise<T>): Promise<T> {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-observer-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-observer-'))
   try {
     return await fn(storeRoot)
   } finally {

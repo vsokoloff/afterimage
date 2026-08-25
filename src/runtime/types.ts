@@ -1,13 +1,13 @@
-import type { LucidObserver, IncidentDetected } from '../observer.ts'
+import type { AfterimageObserver, IncidentDetected } from '../observer.ts'
 import type { AgentRun } from '../events.ts'
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import type { AlertWriter } from './incident-alert.ts'
 import type { WatchFn } from './filesystem-watcher.ts'
 import type { RunIncidentPolicy } from './policy.ts'
 
 /** Options shared by all runtime adapters that wrap an external process or agent. */
 export type RuntimeObserveOptions = {
-  store: LucidStore
+  store: AfterimageStore
   /** argv for the wrapped command (after `afterimage run --`). */
   command: string[]
   cwd?: string
@@ -19,7 +19,7 @@ export type RuntimeObserveOptions = {
   watchFn?: WatchFn
   /**
    * Persist full file bodies on `file_write` events.
-   * Defaults to `LUCID_STORE_FILE_CONTENT` (off unless set).
+   * Defaults to `AFTERIMAGE_STORE_FILE_CONTENT` / legacy `LUCID_STORE_FILE_CONTENT`.
    */
   retainFileContent?: boolean
   /** Default observe — log alert and continue the wrapped process. */
@@ -54,5 +54,5 @@ export type ProcessSpawnFn = (
 
 export type ProcessRuntimeOptions = RuntimeObserveOptions & {
   spawn?: ProcessSpawnFn
-  createObserver?: (store: LucidStore) => LucidObserver
+  createObserver?: (store: AfterimageStore) => AfterimageObserver
 }

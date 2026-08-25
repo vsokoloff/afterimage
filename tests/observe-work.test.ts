@@ -17,11 +17,11 @@ describe('observed agent work', () => {
   })
 
   it('records a afterimage run so lastSeenAt updates', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-observe-work-'))
+    const root = await mkdtemp(path.join(os.tmpdir(), 'afterimage-observe-work-'))
     try {
       const store = await openStore({
         projectRoot: root,
-        storeRoot: path.join(root, '.lucid'),
+        storeRoot: path.join(root, '.afterimage'),
       })
       await writeRepoAgents(store, {
         agents: {

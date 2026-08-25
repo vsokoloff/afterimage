@@ -2,7 +2,7 @@
 
 Afterimage's first **agent-runtime adapter** targets the [Codex SDK](https://cursor.com/docs/sdk/typescript) (`@cursor/sdk`) — programmatic local/cloud agents with a normalized `run.stream()` event log.
 
-Implementation lives under `src/runtime/codex/`. It feeds the same `LucidObserver → AgentEvent → detectors` path as `afterimage run`; detectors never import Codex types.
+Implementation lives under `src/runtime/codex/`. It feeds the same `AfterimageObserver → AgentEvent → detectors` path as `afterimage run`; detectors never import Codex types.
 
 ## What the adapter observes
 

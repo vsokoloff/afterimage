@@ -76,7 +76,7 @@ test('codex run result errors map to error events', () => {
 })
 
 test('observeCodexRun opens repeated-file-state incident from recorded stream', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-loop-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-codex-loop-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const result = await observeCodexRun({
@@ -110,7 +110,7 @@ test('observeCodexRun opens repeated-file-state incident from recorded stream', 
 })
 
 test('observeCodexRun retains file bodies when retainFileContent is enabled', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-retain-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-codex-retain-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const result = await observeCodexRun({
@@ -134,7 +134,7 @@ test('observeCodexRun retains file bodies when retainFileContent is enabled', as
 })
 
 test('observeCodexRun healthy stream does not open a loop incident', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-healthy-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-codex-healthy-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const result = await observeCodexRun({
@@ -153,7 +153,7 @@ test('observeCodexRun healthy stream does not open a loop incident', async () =>
 })
 
 test('observeCodexRun detects incidents before stream ends', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-stream-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-codex-stream-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     let streamFinished = false
@@ -188,7 +188,7 @@ test('observeCodexRun detects incidents before stream ends', async () => {
 })
 
 test('detector sees identical abnormality from codex adapter and manual harness', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-codex-detector-parity-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-codex-detector-parity-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const disease = getPrimaryDisease()

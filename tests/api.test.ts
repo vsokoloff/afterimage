@@ -73,7 +73,7 @@ async function withServer<T>(
   fn: (url: string, storeRoot: string) => Promise<T>,
   options: { rich?: boolean } = {},
 ): Promise<T> {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-api-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-api-'))
   try {
     await seedLoopIncident(storeRoot, options.rich)
     const { url, server } = await startServer({ port: 0, storeRoot })
@@ -89,7 +89,7 @@ async function withServer<T>(
   }
 }
 
-test('GET /api/runs lists persisted runs from .lucid', async () => {
+test('GET /api/runs lists persisted runs from .afterimage', async () => {
   await withServer(async (url) => {
     const response = await fetch(`${url}/api/runs`)
     assert.equal(response.status, 200)

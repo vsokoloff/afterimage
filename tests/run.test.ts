@@ -39,10 +39,10 @@ test('parseRunArgv extracts command after --', () => {
 })
 
 test('runCommand persists process lifecycle events', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-run-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
-    const script = "console.log('lucid-run-hello'); console.error('lucid-run-warn');"
+    const script = "console.log('afterimage-run-hello'); console.error('afterimage-run-warn');"
     const result = await runCommand({
       store,
       command: [process.execPath, '-e', script],
@@ -67,13 +67,13 @@ test('runCommand persists process lifecycle events', async () => {
       (e) => e.type === 'process_output' && e.stream === 'stdout',
     )
     assert.ok(stdout && stdout.type === 'process_output')
-    assert.match(stdout.text, /lucid-run-hello/)
+    assert.match(stdout.text, /afterimage-run-hello/)
 
     const stderr = reloaded.events.find(
       (e) => e.type === 'process_output' && e.stream === 'stderr',
     )
     assert.ok(stderr && stderr.type === 'process_output')
-    assert.match(stderr.text, /lucid-run-warn/)
+    assert.match(stderr.text, /afterimage-run-warn/)
 
     const end = reloaded.events.find((e) => e.type === 'process_end')
     assert.ok(end && end.type === 'process_end')
@@ -85,7 +85,7 @@ test('runCommand persists process lifecycle events', async () => {
 })
 
 test('runCommand records non-zero exit as failed run', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-fail-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-run-fail-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const result = await runCommand({
@@ -105,7 +105,7 @@ test('runCommand records non-zero exit as failed run', async () => {
 })
 
 test('runCommand observes A → B → A file writes and opens an incident', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-loop-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-run-loop-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     // Gaps are under debounceMs so capture must not last-write-wins coalesce.
@@ -167,7 +167,7 @@ test('runCommand observes A → B → A file writes and opens an incident', asyn
 })
 
 test('runCommand detects loop when file already had A and process only writes B→A', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-seed-loop-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-run-seed-loop-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     await writeFile(path.join(storeRoot, 'auth.py'), 'state-A', 'utf8')
@@ -219,7 +219,7 @@ test('runCommand detects loop when file already had A and process only writes B�
 })
 
 test('runCommand prints mid-run incident alert via callback', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-alert-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-run-alert-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const script = [
@@ -256,7 +256,7 @@ test('runCommand prints mid-run incident alert via callback', async () => {
 })
 
 test('runCommand observe policy does not terminate wrapped process on incident', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-run-observe-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-run-observe-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const script = [

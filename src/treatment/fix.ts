@@ -1,6 +1,6 @@
 import { fetchIncident } from '../api.ts'
 import type { IncidentDetailResponse } from '../api.ts'
-import { getIncident, openStore, updateIncident, type LucidStore } from '../store.ts'
+import { getIncident, openStore, updateIncident, type AfterimageStore } from '../store.ts'
 import { getTreatmentAdapter } from './adapters/registry.ts'
 import type { TreatmentApplicationRecord } from './adapters/types.ts'
 import type { StructuredTreatment } from './types.ts'
@@ -12,7 +12,7 @@ export type FixLogger = {
 
 export type RunFixCommandOptions = {
   incidentId: string
-  store?: LucidStore
+  store?: AfterimageStore
   apply?: boolean
   yes?: boolean
   rollback?: boolean
@@ -243,6 +243,6 @@ export async function runFixCommand(options: RunFixCommandOptions): Promise<RunF
   return { exitCode: 0, applied: true }
 }
 
-export async function loadIncidentForFix(store: LucidStore, incidentId: string) {
+export async function loadIncidentForFix(store: AfterimageStore, incidentId: string) {
   return getIncident(store, incidentId)
 }

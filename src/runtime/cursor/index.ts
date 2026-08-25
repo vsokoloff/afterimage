@@ -6,6 +6,7 @@ export {
 export { handleCursorHook, type CursorHookHandleResult, type HandleCursorHookOptions } from './observe.ts'
 export {
   installCursorHooks,
+  afterimagePackageRoot,
   lucidPackageRoot,
   hookEntryFileUrl,
   type InstallCursorHooksResult,

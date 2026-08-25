@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import type { AgentEvent } from '../../events.ts'
 import { newId } from '../../ids.ts'
-import type { LucidStore } from '../../store.ts'
+import type { AfterimageStore } from '../../store.ts'
 import type {
   TreatmentAdapter,
   TreatmentAdapterContext,
@@ -22,19 +22,19 @@ type InstructionOverlay = {
   appliedAt: string
 }
 
-function instructionsDir(store: LucidStore): string {
+function instructionsDir(store: AfterimageStore): string {
   return path.join(store.root, 'agent')
 }
 
-function activeInstructionsPath(store: LucidStore): string {
+function activeInstructionsPath(store: AfterimageStore): string {
   return path.join(instructionsDir(store), 'instructions.json')
 }
 
-function backupsDir(store: LucidStore): string {
+function backupsDir(store: AfterimageStore): string {
   return path.join(store.root, 'treatments', 'backups')
 }
 
-function backupPath(store: LucidStore, applicationId: string): string {
+function backupPath(store: AfterimageStore, applicationId: string): string {
   return path.join(backupsDir(store), `${applicationId}.json`)
 }
 
@@ -114,7 +114,7 @@ export const instructionsTreatmentAdapter: TreatmentAdapter = {
   preview(context): TreatmentPreview {
     const afterOverlay = buildAfterOverlay(context)
     return {
-      summary: 'Instruction hierarchy overlay (.lucid/agent/instructions.json)',
+      summary: 'Instruction hierarchy overlay (.afterimage/agent/instructions.json)',
       before: beforeText(context),
       after: overlayToText(afterOverlay),
     }

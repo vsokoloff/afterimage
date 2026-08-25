@@ -17,7 +17,7 @@ import {
 } from '../src/store.ts'
 
 async function withTempStore<T>(fn: (storeRoot: string) => Promise<T>): Promise<T> {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-store-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-store-'))
   try {
     return await fn(storeRoot)
   } finally {

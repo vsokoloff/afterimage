@@ -1,6 +1,6 @@
-import { createObserver, type IncidentDetected, type LucidObserver } from '../../observer.ts'
+import { createObserver, type IncidentDetected, type AfterimageObserver } from '../../observer.ts'
 import { retainFileContentFromEnv } from '../../privacy.ts'
-import { getRun, openStore, type LucidStore } from '../../store.ts'
+import { getRun, openStore, type AfterimageStore } from '../../store.ts'
 import {
   notifyPetDesktop,
   persistPetAlert,
@@ -36,10 +36,10 @@ function conversationIdOf(payload: CursorHookPayload): string {
 }
 
 async function bindObserver(
-  store: LucidStore,
+  store: AfterimageStore,
   conversationId: string,
-  createObserverFn: (store: LucidStore) => LucidObserver,
-): Promise<{ observer: LucidObserver; session: CursorSessionState; fresh: boolean }> {
+  createObserverFn: (store: AfterimageStore) => AfterimageObserver,
+): Promise<{ observer: AfterimageObserver; session: CursorSessionState; fresh: boolean }> {
   const observer = createObserverFn(store)
   const existing = await loadCursorSession(store)
 
@@ -76,12 +76,12 @@ async function bindObserver(
 export type HandleCursorHookOptions = {
   payload: CursorHookPayload
   cwd?: string
-  store?: LucidStore
+  store?: AfterimageStore
   incidentPolicy?: RunIncidentPolicy
   webBaseUrl?: string
   alertWriter?: AlertWriter
   retainFileContent?: boolean
-  createObserver?: (store: LucidStore) => LucidObserver
+  createObserver?: (store: AfterimageStore) => AfterimageObserver
   /** Skip desktop notifications (tests). */
   desktopNotify?: boolean
 }
@@ -104,7 +104,7 @@ export async function handleCursorHook(
   }
 
   const createObserverFn =
-    options.createObserver ?? ((s: LucidStore) => createObserver({ store: s }))
+    options.createObserver ?? ((s: AfterimageStore) => createObserver({ store: s }))
   const policy = resolveRunIncidentPolicy(options.incidentPolicy)
   const webBaseUrl = resolveWebBaseUrl(options.webBaseUrl)
   const eventName = options.payload.hook_event_name ?? 'unknown'

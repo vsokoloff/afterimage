@@ -31,7 +31,7 @@ try {
   const { url } = await startServer()
   console.log()
   console.log(`Afterimage: ${url}`)
-  console.log('Demo path: Incidents → Auth Agent → Run diagnostics → lucid fix → recheck')
+  console.log('Demo path: Incidents → Auth Agent → Run diagnostics → afterimage fix → recheck')
   console.log('Press Ctrl+C to stop.')
   openBrowser(url)
 } catch (error) {

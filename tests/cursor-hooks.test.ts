@@ -69,7 +69,7 @@ test('watching intro is cheerful', () => {
 })
 
 test('cursor afterFileEdit normalizes to file_write from disk', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-cursor-norm-'))
+  const root = await mkdtemp(path.join(os.tmpdir(), 'afterimage-cursor-norm-'))
   try {
     await writeFile(path.join(root, 'auth.py'), 'state-A\n', 'utf8')
     const events = await cursorHookToRecordableEvents(
@@ -93,7 +93,7 @@ test('cursor afterFileEdit normalizes to file_write from disk', async () => {
 })
 
 test('cursor hooks detect A→B→A across afterFileEdit invocations', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-cursor-loop-'))
+  const root = await mkdtemp(path.join(os.tmpdir(), 'afterimage-cursor-loop-'))
   try {
     const store = await openStore({ projectRoot: root })
     const filePath = path.join(root, 'auth.py')
@@ -155,7 +155,7 @@ test('cursor hooks detect A→B→A across afterFileEdit invocations', async () 
 })
 
 test('installCursorHooks writes hooks.json and observe script', async () => {
-  const project = await mkdtemp(path.join(os.tmpdir(), 'lucid-cursor-install-'))
+  const project = await mkdtemp(path.join(os.tmpdir(), 'afterimage-cursor-install-'))
   // This test file compiles to dist/tests/cursor-hooks.test.js → package root is ../..
   const pkg = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
   try {
@@ -166,17 +166,23 @@ test('installCursorHooks writes hooks.json and observe script', async () => {
     const hooks = JSON.parse(await readFile(result.hooksJsonPath, 'utf8')) as {
       hooks: Record<string, Array<{ command: string }>>
     }
-    assert.ok(hooks.hooks.afterFileEdit?.some((h) => h.command.includes('lucid-observe')))
+    assert.ok(hooks.hooks.afterFileEdit?.some((h) => h.command.includes('afterimage-observe')))
+    assert.ok(result.observeScriptPath.endsWith('afterimage-observe.mjs'))
     assert.ok(hooks.hooks.sessionStart?.length)
     const script = await readFile(result.observeScriptPath, 'utf8')
     assert.match(script, /runCursorHookCli/)
+    const legacy = await readFile(
+      path.join(project, '.cursor', 'hooks', 'afterimage-observe.mjs'),
+      'utf8',
+    )
+    assert.match(legacy, /runCursorHookCli/)
   } finally {
     await rm(project, { recursive: true, force: true })
   }
 })
 
 test('sessionStart returns kitty watching intro', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-cursor-session-'))
+  const root = await mkdtemp(path.join(os.tmpdir(), 'afterimage-cursor-session-'))
   try {
     const store = await openStore({ projectRoot: root })
     const result = await handleCursorHook({

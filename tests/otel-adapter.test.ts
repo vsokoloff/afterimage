@@ -17,7 +17,7 @@ import {
   parseOtelArgv,
   startOtlpHttpServer,
 } from '../src/runtime/otel/index.ts'
-import type { LucidOtelSpan } from '../src/runtime/otel/types.ts'
+import type { AfterimageOtelSpan } from '../src/runtime/otel/types.ts'
 import { getRun, listRuns, openStore } from '../src/store.ts'
 
 const T0 = '1700000000000000000'
@@ -25,7 +25,7 @@ const T1 = '1700000001000000000'
 const T2 = '1700000002000000000'
 const T3 = '1700000003000000000'
 
-function span(partial: Partial<LucidOtelSpan> & Pick<LucidOtelSpan, 'spanId' | 'name'>): LucidOtelSpan {
+function span(partial: Partial<AfterimageOtelSpan> & Pick<AfterimageOtelSpan, 'spanId' | 'name'>): AfterimageOtelSpan {
   return {
     traceId: 'trace-auth-loop',
     startTimeUnixNano: T0,
@@ -35,7 +35,7 @@ function span(partial: Partial<LucidOtelSpan> & Pick<LucidOtelSpan, 'spanId' | '
   }
 }
 
-function agentChatToolTree(): LucidOtelSpan[] {
+function agentChatToolTree(): AfterimageOtelSpan[] {
   return [
     span({
       spanId: 'root',
@@ -248,7 +248,7 @@ test('parseOtelArgv reads host port group-by idle-ms', () => {
 })
 
 test('OTLP/HTTP ingest records events and can open a loop incident', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'lucid-otel-'))
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'afterimage-otel-'))
   try {
     const store = await openStore({ storeRoot: dir, retainFileContent: true })
     const server = await startOtlpHttpServer({
@@ -331,7 +331,7 @@ test('OTLP/HTTP ingest records events and can open a loop incident', async () =>
 })
 
 test('observer records OTEL-normalized events without importing otel in detectors', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'lucid-otel-obs-'))
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'afterimage-otel-obs-'))
   try {
     const store = await openStore({ storeRoot: dir, retainFileContent: true })
     const observer = createObserver({ store })

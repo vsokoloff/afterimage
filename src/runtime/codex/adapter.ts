@@ -1,7 +1,7 @@
-import { createObserver, type IncidentDetected, type LucidObserver } from '../../observer.ts'
+import { createObserver, type IncidentDetected, type AfterimageObserver } from '../../observer.ts'
 import type { FinishRunStatus } from '../../observer.ts'
 import { retainFileContentFromEnv } from '../../privacy.ts'
-import type { LucidStore } from '../../store.ts'
+import type { AfterimageStore } from '../../store.ts'
 import { handleIncidentDetection } from '../incident-handling.ts'
 import {
   resolveRunIncidentPolicy,
@@ -17,25 +17,27 @@ import {
 import type { CodexRunResult, CodexSDKMessage } from './types.ts'
 
 export type ObserveCodexRunOptions = {
-  store: LucidStore
+  store: AfterimageStore
   task: string
   messages: Iterable<CodexSDKMessage> | AsyncIterable<CodexSDKMessage>
   result?: CodexRunResult
   cwd?: string
   model?: string
+  afterimageAgentId?: string
+  /** @deprecated Use afterimageAgentId */
   lucidAgentId?: string
   codexAgentId?: string
   codexRunId?: string
   /**
    * Persist full file bodies on `file_write` events.
-   * Defaults to `LUCID_STORE_FILE_CONTENT` (off unless set).
+   * Defaults to `AFTERIMAGE_STORE_FILE_CONTENT` / legacy `LUCID_STORE_FILE_CONTENT`.
    */
   retainFileContent?: boolean
   incidentPolicy?: import('../policy.ts').RunIncidentPolicy
   webBaseUrl?: string
   onIncidentDetected?: (detection: IncidentDetected) => void
   alertWriter?: import('../incident-alert.ts').AlertWriter
-  createObserver?: (store: LucidStore) => LucidObserver
+  createObserver?: (store: AfterimageStore) => AfterimageObserver
 }
 
 async function* iterateMessages(
@@ -62,7 +64,7 @@ function finishStatusFromCodex(status: string | undefined): FinishRunStatus {
 }
 
 /**
- * Observe one Codex SDK agent run: normalize stream events → AgentEvent, persist via LucidObserver.
+ * Observe one Codex SDK agent run: normalize stream events → AgentEvent, persist via AfterimageObserver.
  */
 export async function observeCodexRun(
   options: ObserveCodexRunOptions,
@@ -112,9 +114,10 @@ export async function observeCodexRun(
   }
 
   const codexAgentId = options.codexAgentId ?? 'codex-local'
-  const lucidAgentId = options.lucidAgentId ?? `codex:${codexAgentId}`
+  const afterimageAgentId =
+    options.afterimageAgentId ?? options.lucidAgentId ?? `codex:${codexAgentId}`
 
-  await observer.startRun({ agentId: lucidAgentId })
+  await observer.startRun({ agentId: afterimageAgentId })
 
   if (options.task.trim().length > 0) {
     await recordWithIncidents([

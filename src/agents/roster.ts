@@ -1,6 +1,6 @@
 import type { AgentEvent, AgentRun } from '../events.ts'
 import type { Incident } from '../incident.ts'
-import { getRun, listIncidents, listRuns, type LucidStore } from '../store.ts'
+import { getRun, listIncidents, listRuns, type AfterimageStore } from '../store.ts'
 import { loadRepoAgents } from '../workspace/store.ts'
 import { resolveAgentCatalog, resolveAgentRuntime } from './catalog.ts'
 import { canonicalDashboardAgentId } from './identity.ts'
@@ -162,7 +162,7 @@ type AgentBucket = {
   incidents: Incident[]
 }
 
-async function loadAgentBuckets(store: LucidStore): Promise<Map<string, AgentBucket>> {
+async function loadAgentBuckets(store: AfterimageStore): Promise<Map<string, AgentBucket>> {
   const runs = await listRuns(store)
   const incidents = await listIncidents(store)
   const buckets = new Map<string, AgentBucket>()
@@ -252,7 +252,7 @@ function idleConfiguredSummary(
   }
 }
 
-export async function fetchAgents(store: LucidStore): Promise<AgentsListResponse> {
+export async function fetchAgents(store: AfterimageStore): Promise<AgentsListResponse> {
   const repoAgents = await loadRepoAgents(store)
   const buckets = await loadAgentBuckets(store)
   const agents = [...buckets.values()].map((bucket) => buildAgentSummary(bucket, repoAgents))
@@ -274,7 +274,7 @@ export async function fetchAgents(store: LucidStore): Promise<AgentsListResponse
 }
 
 export async function fetchAgentProfile(
-  store: LucidStore,
+  store: AfterimageStore,
   agentId: string,
 ): Promise<AgentProfileResponse | null> {
   const buckets = await loadAgentBuckets(store)
@@ -321,7 +321,7 @@ export async function fetchAgentProfile(
 }
 
 export async function fetchActivity(
-  store: LucidStore,
+  store: AfterimageStore,
   limit = 100,
 ): Promise<ActivityListResponse> {
   const runs = await listRuns(store)

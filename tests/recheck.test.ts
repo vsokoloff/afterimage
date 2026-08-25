@@ -60,7 +60,7 @@ test('parseRecheckArgv requires incident id', () => {
 })
 
 test('recheck re-runs reproduction and leaves incident open when loop persists', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-recheck-fail-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-recheck-fail-'))
   try {
     const { store, incidentId } = await seedLoopIncident(storeRoot)
 
@@ -104,7 +104,7 @@ test('recheck re-runs reproduction and leaves incident open when loop persists',
 })
 
 test('recheck clears incident when verify passes on healthy reproduction', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-recheck-pass-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-recheck-pass-'))
   try {
     const { store, incidentId } = await seedLoopIncident(storeRoot)
 
@@ -139,7 +139,7 @@ test('recheck clears incident when verify passes on healthy reproduction', async
 })
 
 test('recheck without reproduction does not clear observer-only incidents', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-recheck-norepro-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-recheck-norepro-'))
   try {
     const store = await openStore({ projectRoot: storeRoot })
     const observer = createObserver({ store })
@@ -198,7 +198,7 @@ test('recheck without reproduction does not clear observer-only incidents', asyn
 })
 
 test('recheck does not clear when reproduction produces no file writes', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-recheck-no-writes-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-recheck-no-writes-'))
   try {
     const { store, incidentId } = await seedLoopIncident(storeRoot)
 

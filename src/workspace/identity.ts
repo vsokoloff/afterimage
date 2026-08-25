@@ -9,7 +9,7 @@ const execFileAsync = promisify(execFile)
 
 export type Workspace = {
   id: string
-  /** Absolute path to the repository / project root (parent of `.lucid/`). */
+  /** Absolute path to the repository / project root (parent of `.afterimage/`). */
   root: string
   /** Human label, e.g. `owner/repo` or folder name. */
   label: string

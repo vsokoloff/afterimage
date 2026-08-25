@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, access } from 'node:fs/promises'
 import path from 'node:path'
 import { constants as fsConstants } from 'node:fs'
 
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import { resolveWorkspace, type Workspace } from './identity.ts'
 
 export type RepoAgentEntry = {
@@ -17,11 +17,11 @@ export type RepoAgentsFile = {
 
 const EMPTY_AGENTS: RepoAgentsFile = { agents: {} }
 
-function workspacePath(store: Pick<LucidStore, 'root'>): string {
+function workspacePath(store: Pick<AfterimageStore, 'root'>): string {
   return path.join(store.root, 'workspace.json')
 }
 
-function agentsPath(store: Pick<LucidStore, 'root'>): string {
+function agentsPath(store: Pick<AfterimageStore, 'root'>): string {
   return path.join(store.root, 'agents.json')
 }
 
@@ -34,9 +34,9 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-/** Persist workspace identity under `.lucid/workspace.json` (idempotent). */
+/** Persist workspace identity under `.afterimage/workspace.json` (idempotent). */
 export async function ensureWorkspace(
-  store: Pick<LucidStore, 'root' | 'projectRoot'>,
+  store: Pick<AfterimageStore, 'root' | 'projectRoot'>,
 ): Promise<Workspace> {
   const filePath = workspacePath(store)
   if (await exists(filePath)) {
@@ -50,7 +50,7 @@ export async function ensureWorkspace(
   return workspace
 }
 
-export async function loadWorkspace(store: LucidStore): Promise<Workspace> {
+export async function loadWorkspace(store: AfterimageStore): Promise<Workspace> {
   const filePath = workspacePath(store)
   if (!(await exists(filePath))) {
     return ensureWorkspace(store)
@@ -59,8 +59,8 @@ export async function loadWorkspace(store: LucidStore): Promise<Workspace> {
   return JSON.parse(raw) as Workspace
 }
 
-/** Optional per-repo agent display config (`.lucid/agents.json`). */
-export async function loadRepoAgents(store: LucidStore): Promise<RepoAgentsFile> {
+/** Optional per-repo agent display config (`.afterimage/agents.json`). */
+export async function loadRepoAgents(store: AfterimageStore): Promise<RepoAgentsFile> {
   const filePath = agentsPath(store)
   if (!(await exists(filePath))) return EMPTY_AGENTS
   const raw = await readFile(filePath, 'utf8')
@@ -69,13 +69,13 @@ export async function loadRepoAgents(store: LucidStore): Promise<RepoAgentsFile>
   return parsed
 }
 
-export async function writeRepoAgents(store: LucidStore, config: RepoAgentsFile): Promise<void> {
+export async function writeRepoAgents(store: AfterimageStore, config: RepoAgentsFile): Promise<void> {
   await mkdir(store.root, { recursive: true })
   await writeFile(agentsPath(store), `${JSON.stringify(config, null, 2)}\n`, 'utf8')
 }
 
-/** Initialize `.lucid/` for the current repository. */
-export async function initWorkspaceStore(store: LucidStore): Promise<{
+/** Initialize `.afterimage/` for the current repository. */
+export async function initWorkspaceStore(store: AfterimageStore): Promise<{
   workspace: Workspace
   agents: RepoAgentsFile
 }> {

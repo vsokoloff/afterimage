@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 /** Afterimage package root (where package.json + dist/ live). */
-export function lucidPackageRoot(): string {
+export function afterimagePackageRoot(): string {
   const here = path.dirname(fileURLToPath(import.meta.url))
   // Compiled: dist/src/runtime/cursor → 4 levels up
   // Source ts executed oddly: src/runtime/cursor → 3 levels up
@@ -44,7 +44,7 @@ export async function installCursorHooks(options: {
   packageRoot?: string
 }): Promise<InstallCursorHooksResult> {
   const projectRoot = path.resolve(options.projectRoot)
-  const packageRoot = options.packageRoot ?? lucidPackageRoot()
+  const packageRoot = options.packageRoot ?? afterimagePackageRoot()
   const hookEntry = hookEntryPath(packageRoot)
 
   if (!(await exists(hookEntry))) {
@@ -57,7 +57,6 @@ export async function installCursorHooks(options: {
   const hooksDir = path.join(cursorDir, 'hooks')
   await mkdir(hooksDir, { recursive: true })
 
-  const observeScriptPath = path.join(hooksDir, 'lucid-observe.mjs')
   const observeScript = `#!/usr/bin/env node
 /**
  * Afterimage Cursor observe hook — keep prompting normally.
@@ -69,12 +68,17 @@ const entry = ${JSON.stringify(hookEntry)}
 const mod = await import(pathToFileURL(entry).href)
 await mod.runCursorHookCli()
 `
+  const observeScriptPath = path.join(hooksDir, 'afterimage-observe.mjs')
+  const legacyObserveScriptPath = path.join(hooksDir, 'lucid-observe.mjs')
   await writeFile(observeScriptPath, observeScript, 'utf8')
   await chmod(observeScriptPath, 0o755)
+  // Keep legacy script path for older hooks.json entries.
+  await writeFile(legacyObserveScriptPath, observeScript, 'utf8')
+  await chmod(legacyObserveScriptPath, 0o755)
 
   const hooksJsonPath = path.join(cursorDir, 'hooks.json')
-  const command = '.cursor/hooks/lucid-observe.mjs'
-  const lucidEvents = [
+  const command = '.cursor/hooks/afterimage-observe.mjs'
+  const afterimageEvents = [
     'sessionStart',
     'beforeSubmitPrompt',
     'afterFileEdit',
@@ -93,12 +97,14 @@ await mod.runCursorHookCli()
   }
 
   const hooks = { ...(existing.hooks ?? {}) }
-  for (const eventName of lucidEvents) {
+  for (const eventName of afterimageEvents) {
     const list = Array.isArray(hooks[eventName]) ? [...hooks[eventName]!] : []
     const already = list.some(
       (item) =>
         typeof item.command === 'string' &&
-        (item.command.includes('lucid-observe') || item.command === command),
+        (item.command.includes('afterimage-observe') ||
+          item.command.includes('lucid-observe') ||
+          item.command === command),
     )
     if (!already) {
       list.push({ command })
@@ -140,11 +146,14 @@ await mod.runCursorHookCli()
     hooksJsonPath,
     observeScriptPath,
     hookEntry,
-    mergedEvents: [...lucidEvents],
+    mergedEvents: [...afterimageEvents],
   }
 }
 
+/** @deprecated Use afterimagePackageRoot */
+export const lucidPackageRoot = afterimagePackageRoot
+
 /** Resolve the hook entry URL for dynamic import helpers. */
-export function hookEntryFileUrl(packageRoot = lucidPackageRoot()): string {
+export function hookEntryFileUrl(packageRoot = afterimagePackageRoot()): string {
   return pathToFileURL(hookEntryPath(packageRoot)).href
 }

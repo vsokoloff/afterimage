@@ -30,7 +30,7 @@ async function seedAuthLoop(storeRoot: string) {
 }
 
 test('fetchAgents derives working, unhealthy, and idle from real runs', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-agents-roster-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-agents-roster-'))
   try {
     const store = await seedAuthLoop(storeRoot)
 
@@ -76,7 +76,7 @@ test('fetchAgents derives working, unhealthy, and idle from real runs', async ()
 })
 
 test('fetchAgentProfile returns runs, events, and incidents without invented fields', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-agents-profile-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-agents-profile-'))
   try {
     const store = await seedAuthLoop(storeRoot)
     const profile = await fetchAgentProfile(store, 'auth')
@@ -95,7 +95,7 @@ test('fetchAgentProfile returns runs, events, and incidents without invented fie
 })
 
 test('fetchActivity lists persisted events newest first', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-agents-activity-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-agents-activity-'))
   try {
     const store = await seedAuthLoop(storeRoot)
     const { activity } = await fetchActivity(store, 10)

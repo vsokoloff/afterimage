@@ -2,7 +2,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { constants as fsConstants } from 'node:fs'
 import path from 'node:path'
 
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import {
   emptyUmaMemory,
   makeEntryId,
@@ -12,11 +12,11 @@ import {
   type UmaMemoryFile,
 } from './types.ts'
 
-function umaDir(store: Pick<LucidStore, 'root'>): string {
+function umaDir(store: Pick<AfterimageStore, 'root'>): string {
   return path.join(store.root, 'uma')
 }
 
-function memoryPath(store: Pick<LucidStore, 'root'>): string {
+function memoryPath(store: Pick<AfterimageStore, 'root'>): string {
   return path.join(umaDir(store), 'memory.json')
 }
 
@@ -34,7 +34,7 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-export async function loadUmaMemory(store: LucidStore): Promise<UmaMemoryFile> {
+export async function loadUmaMemory(store: AfterimageStore): Promise<UmaMemoryFile> {
   const filePath = memoryPath(store)
   if (!(await exists(filePath))) return emptyUmaMemory()
   try {
@@ -53,7 +53,7 @@ export async function loadUmaMemory(store: LucidStore): Promise<UmaMemoryFile> {
   }
 }
 
-async function writeUmaMemory(store: LucidStore, memory: UmaMemoryFile): Promise<void> {
+async function writeUmaMemory(store: AfterimageStore, memory: UmaMemoryFile): Promise<void> {
   await mkdir(umaDir(store), { recursive: true })
   await writeFile(memoryPath(store), `${JSON.stringify(memory, null, 2)}\n`, 'utf8')
 
@@ -63,7 +63,7 @@ async function writeUmaMemory(store: LucidStore, memory: UmaMemoryFile): Promise
 }
 
 export async function rememberUmaPreference(
-  store: LucidStore,
+  store: AfterimageStore,
   input: { about: string; text: string; now?: Date },
 ): Promise<{ memory: UmaMemoryFile; entry: UmaMemoryEntry }> {
   const now = input.now ?? new Date()
@@ -86,7 +86,7 @@ export async function rememberUmaPreference(
 }
 
 export async function forgetUmaPreference(
-  store: LucidStore,
+  store: AfterimageStore,
   input: { about?: string; id?: string },
 ): Promise<{ memory: UmaMemoryFile; removed: number }> {
   const memory = await loadUmaMemory(store)
@@ -108,7 +108,7 @@ export async function forgetUmaPreference(
   return { memory, removed }
 }
 
-export async function ensureUmaMemorySeed(store: LucidStore): Promise<UmaMemoryFile> {
+export async function ensureUmaMemorySeed(store: AfterimageStore): Promise<UmaMemoryFile> {
   const memory = await loadUmaMemory(store)
   if (!(await exists(memoryPath(store)))) {
     await writeUmaMemory(store, memory)

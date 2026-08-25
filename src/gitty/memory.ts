@@ -2,7 +2,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { constants as fsConstants } from 'node:fs'
 import path from 'node:path'
 
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 
 /** Remembered Gitty habits — save the workspace whenever code changes. */
 export type GittyHabits = {
@@ -35,7 +35,7 @@ export function defaultGittyHabits(now = new Date()): GittyHabits {
   }
 }
 
-function gittyPath(store: Pick<LucidStore, 'root'>): string {
+function gittyPath(store: Pick<AfterimageStore, 'root'>): string {
   return path.join(store.root, 'gitty.json')
 }
 
@@ -48,7 +48,7 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-export async function loadGittyHabits(store: LucidStore): Promise<GittyHabits> {
+export async function loadGittyHabits(store: AfterimageStore): Promise<GittyHabits> {
   const filePath = gittyPath(store)
   if (!(await exists(filePath))) return defaultGittyHabits()
   try {
@@ -71,8 +71,8 @@ export async function loadGittyHabits(store: LucidStore): Promise<GittyHabits> {
   }
 }
 
-/** Persist Gitty’s save habit under `.lucid/gitty.json`. */
-export async function rememberGittyPush(store: LucidStore): Promise<GittyHabits> {
+/** Persist Gitty’s save habit under `.afterimage/gitty.json`. */
+export async function rememberGittyPush(store: AfterimageStore): Promise<GittyHabits> {
   const habits = defaultGittyHabits()
   await mkdir(store.root, { recursive: true })
   await writeFile(gittyPath(store), `${JSON.stringify(habits, null, 2)}\n`, 'utf8')

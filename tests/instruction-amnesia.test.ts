@@ -122,7 +122,7 @@ test('instruction-amnesia: do-not-use tool violation', () => {
 })
 
 test('instruction-amnesia: project instructions store round-trip (no API key)', async () => {
-  const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-instructions-'))
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-instructions-'))
   try {
     const store = await openStore({ projectRoot })
     await upsertProjectInstruction(store, {

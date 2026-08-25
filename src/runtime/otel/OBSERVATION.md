@@ -1,6 +1,6 @@
 # OpenTelemetry GenAI → Afterimage observation
 
-Afterimage's **universal** runtime adapter accepts OTLP/HTTP GenAI traces and maps them to the same `RecordableEvent → LucidObserver → AgentEvent` path as process and Codex adapters. Detectors never import OTEL types.
+Afterimage's **universal** runtime adapter accepts OTLP/HTTP GenAI traces and maps them to the same `RecordableEvent → AfterimageObserver → AgentEvent` path as process and Codex adapters. Detectors never import OTEL types.
 
 Implementation: `src/runtime/otel/`.
 

@@ -1,6 +1,6 @@
 /**
  * Map legacy / alias agent ids onto the dashboard agent Afterimage watches.
- * `subprocess` (lucid run default) is Gitty on the roster.
+ * `subprocess` (afterimage run default) is Gitty on the roster.
  */
 export function canonicalDashboardAgentId(agentId: string): string {
   if (agentId === 'subprocess') return 'gitty'

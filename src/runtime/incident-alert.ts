@@ -3,7 +3,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 
 import type { IncidentDetected } from '../observer.ts'
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import {
   formatPetIncidentAlert,
   formatPetIncidentToast,
@@ -51,9 +51,9 @@ export function printIncidentAlert(
   writer.write(formatIncidentAlert(detection, webBaseUrl, policy, options))
 }
 
-/** Persist the latest pet alert under `.lucid/alerts/` for UIs / hooks. */
+/** Persist the latest pet alert under `<store.root>/alerts/` (`.afterimage` or legacy `.lucid`). */
 export async function persistPetAlert(
-  store: Pick<LucidStore, 'root'>,
+  store: Pick<AfterimageStore, 'root'>,
   detection: IncidentDetected,
   webBaseUrl: string,
 ): Promise<{ alertPath: string; toast: string }> {

@@ -1,5 +1,9 @@
 export type {
   GenAiOperationName,
+  AfterimageOtelResource,
+  AfterimageOtelResourceSpans,
+  AfterimageOtelScopeSpans,
+  AfterimageOtelSpan,
   LucidOtelResource,
   LucidOtelResourceSpans,
   LucidOtelScopeSpans,

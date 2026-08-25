@@ -12,7 +12,7 @@ import { ensureWorkspace } from './workspace/store.ts'
 import { resolveProjectRoot } from './workspace/identity.ts'
 import type { Workspace } from './workspace/identity.ts'
 
-export type LucidStore = {
+export type AfterimageStore = {
   /** Absolute path to the `.afterimage` directory (or legacy `.lucid`). */
   root: string
   /** Absolute path to the repository / project root. */
@@ -25,8 +25,8 @@ export type LucidStore = {
   retainFileContent: boolean
 }
 
-/** Preferred name for the local store handle. */
-export type AfterimageStore = LucidStore
+/** @deprecated Use AfterimageStore */
+export type LucidStore = AfterimageStore
 
 export type OpenStoreOptions = {
   /** Starting directory for resolving the project root (default: process.cwd()). */
@@ -44,23 +44,23 @@ export type OpenStoreOptions = {
 
 type RunRecord = Omit<AgentRun, 'events'>
 
-function runsDir(store: LucidStore): string {
+function runsDir(store: AfterimageStore): string {
   return path.join(store.root, 'runs')
 }
 
-function incidentsDir(store: LucidStore): string {
+function incidentsDir(store: AfterimageStore): string {
   return path.join(store.root, 'incidents')
 }
 
-function runMetaPath(store: LucidStore, runId: string): string {
+function runMetaPath(store: AfterimageStore, runId: string): string {
   return path.join(runsDir(store), `${runId}.json`)
 }
 
-function runEventsPath(store: LucidStore, runId: string): string {
+function runEventsPath(store: AfterimageStore, runId: string): string {
   return path.join(runsDir(store), `${runId}.events.jsonl`)
 }
 
-function incidentPath(store: LucidStore, incidentId: string): string {
+function incidentPath(store: AfterimageStore, incidentId: string): string {
   return path.join(incidentsDir(store), `${incidentId}.json`)
 }
 
@@ -73,7 +73,7 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function ensureDirs(store: LucidStore): Promise<void> {
+async function ensureDirs(store: AfterimageStore): Promise<void> {
   await mkdir(runsDir(store), { recursive: true })
   await mkdir(incidentsDir(store), { recursive: true })
 }
@@ -96,7 +96,7 @@ async function readJsonl<T>(filePath: string): Promise<T[]> {
 }
 
 /** Open (and create) a local `.afterimage` store scoped to one repository. */
-export async function openStore(options: OpenStoreOptions = {}): Promise<LucidStore> {
+export async function openStore(options: OpenStoreOptions = {}): Promise<AfterimageStore> {
   const projectRoot = path.resolve(
     options.projectRoot ??
       (options.storeRoot
@@ -134,7 +134,7 @@ export type CreateRunInput = {
 
 /** Create a new run and persist its metadata (events start empty). */
 export async function createRun(
-  store: LucidStore,
+  store: AfterimageStore,
   input: CreateRunInput = {},
 ): Promise<AgentRun> {
   await ensureDirs(store)
@@ -161,7 +161,7 @@ export async function createRun(
  * By default strips `file_write` bodies unless `store.retainFileContent`.
  */
 export async function appendEvent(
-  store: LucidStore,
+  store: AfterimageStore,
   event: AgentEvent,
 ): Promise<AgentEvent> {
   await ensureDirs(store)
@@ -182,7 +182,7 @@ export async function appendEvent(
 }
 
 /** Load a run and all of its events from disk. */
-export async function getRun(store: LucidStore, runId: string): Promise<AgentRun | null> {
+export async function getRun(store: AfterimageStore, runId: string): Promise<AgentRun | null> {
   const meta = await readJson<RunRecord>(runMetaPath(store, runId))
   if (!meta) return null
   const events = await readJsonl<AgentEvent>(runEventsPath(store, runId))
@@ -191,7 +191,7 @@ export async function getRun(store: LucidStore, runId: string): Promise<AgentRun
 }
 
 /** List all persisted runs (with events loaded). Newest startedAt first. */
-export async function listRuns(store: LucidStore): Promise<AgentRun[]> {
+export async function listRuns(store: AfterimageStore): Promise<AgentRun[]> {
   await ensureDirs(store)
   const files = await readdir(runsDir(store))
   const ids = files
@@ -223,7 +223,7 @@ export type CreateIncidentInput = {
 
 /** Create and persist an incident record. */
 export async function createIncident(
-  store: LucidStore,
+  store: AfterimageStore,
   input: CreateIncidentInput,
 ): Promise<Incident> {
   await ensureDirs(store)
@@ -252,7 +252,7 @@ export async function createIncident(
 }
 
 export async function getIncident(
-  store: LucidStore,
+  store: AfterimageStore,
   incidentId: string,
 ): Promise<Incident | null> {
   return readJson<Incident>(incidentPath(store, incidentId))
@@ -277,7 +277,7 @@ export type UpdateIncidentPatch = Partial<
 
 /** Patch an incident and bump `updatedAt`. */
 export async function updateIncident(
-  store: LucidStore,
+  store: AfterimageStore,
   incidentId: string,
   patch: UpdateIncidentPatch,
 ): Promise<Incident> {
@@ -302,7 +302,7 @@ export type UpdateRunPatch = Partial<Pick<RunRecord, 'status' | 'endedAt' | 'age
 
 /** Update run metadata (status / endedAt) and return the full run with events. */
 export async function updateRun(
-  store: LucidStore,
+  store: AfterimageStore,
   runId: string,
   patch: UpdateRunPatch,
 ): Promise<AgentRun> {
@@ -318,7 +318,7 @@ export async function updateRun(
 }
 
 /** List all persisted incidents. Newest createdAt first. */
-export async function listIncidents(store: LucidStore): Promise<Incident[]> {
+export async function listIncidents(store: AfterimageStore): Promise<Incident[]> {
   await ensureDirs(store)
   const files = await readdir(incidentsDir(store))
   const incidents: Incident[] = []

@@ -51,9 +51,9 @@ describe('uma argv', () => {
 
 describe('uma memory', () => {
   it('remembers preferences and mirrors Cursor rule', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-uma-'))
+    const root = await mkdtemp(path.join(os.tmpdir(), 'afterimage-uma-'))
     try {
-      const store = await openStore({ projectRoot: root, storeRoot: path.join(root, '.lucid') })
+      const store = await openStore({ projectRoot: root, storeRoot: path.join(root, '.afterimage') })
       const { entry } = await rememberUmaPreference(store, {
         about: 'hero',
         text: 'Brand first, one headline, full-bleed image',

@@ -1,6 +1,6 @@
-import type { LucidObserver, IncidentDetected } from '../observer.ts'
+import type { AfterimageObserver, IncidentDetected } from '../observer.ts'
 import type { AgentRun } from '../events.ts'
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import type { AlertWriter } from './incident-alert.ts'
 import type { RunIncidentPolicy } from './policy.ts'
 
@@ -9,25 +9,27 @@ import type { RunIncidentPolicy } from './policy.ts'
  * Unlike `RuntimeObserveOptions`, these wrap an in-process agent stream — not argv.
  */
 export type AgentRuntimeObserveOptions = {
-  store: LucidStore
+  store: AfterimageStore
   /** User task / prompt that started the agent run. */
   task: string
   cwd?: string
   model?: string
+  afterimageAgentId?: string
+  /** @deprecated Use afterimageAgentId */
   lucidAgentId?: string
   /** Host runtime identifiers (Codex agent_id / run_id). */
   codexAgentId?: string
   codexRunId?: string
   /**
    * Persist full file bodies on `file_write` events.
-   * Defaults to `LUCID_STORE_FILE_CONTENT` (off unless set).
+   * Defaults to `AFTERIMAGE_STORE_FILE_CONTENT` / legacy `LUCID_STORE_FILE_CONTENT`.
    */
   retainFileContent?: boolean
   incidentPolicy?: RunIncidentPolicy
   webBaseUrl?: string
   onIncidentDetected?: (detection: IncidentDetected) => void
   alertWriter?: AlertWriter
-  createObserver?: (store: LucidStore) => LucidObserver
+  createObserver?: (store: AfterimageStore) => AfterimageObserver
 }
 
 export type AgentRuntimeObserveResult = {

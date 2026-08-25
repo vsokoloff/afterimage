@@ -1,6 +1,6 @@
 import type {
-  LucidOtelResourceSpans,
-  LucidOtelSpan,
+  AfterimageOtelResourceSpans,
+  AfterimageOtelSpan,
   OtelAttributeValue,
   OtelAttributes,
   OtlpExportTraceServiceRequest,
@@ -69,7 +69,7 @@ function asAttributes(raw: unknown): OtelAttributes | undefined {
   return undefined
 }
 
-function decodeSpan(raw: Record<string, unknown>): LucidOtelSpan | null {
+function decodeSpan(raw: Record<string, unknown>): AfterimageOtelSpan | null {
   const traceId = typeof raw.traceId === 'string' ? raw.traceId : undefined
   const spanId = typeof raw.spanId === 'string' ? raw.spanId : undefined
   if (!traceId || !spanId) return null
@@ -80,7 +80,7 @@ function decodeSpan(raw: Record<string, unknown>): LucidOtelSpan | null {
       : undefined
 
   const statusRaw = raw.status
-  let status: LucidOtelSpan['status']
+  let status: AfterimageOtelSpan['status']
   if (statusRaw && typeof statusRaw === 'object') {
     const record = statusRaw as Record<string, unknown>
     const code = record.code
@@ -132,12 +132,12 @@ export function decodeOtlpJsonTraceRequest(body: unknown): OtlpExportTraceServic
     return { resourceSpans: [] }
   }
 
-  const resourceSpans: LucidOtelResourceSpans[] = []
+  const resourceSpans: AfterimageOtelResourceSpans[] = []
   for (const rs of resourceSpansRaw) {
     if (!rs || typeof rs !== 'object') continue
     const rsRecord = rs as Record<string, unknown>
     const resourceRaw = rsRecord.resource
-    let resource: LucidOtelResourceSpans['resource']
+    let resource: AfterimageOtelResourceSpans['resource']
     if (resourceRaw && typeof resourceRaw === 'object') {
       resource = {
         attributes: asAttributes((resourceRaw as Record<string, unknown>).attributes),
@@ -145,12 +145,12 @@ export function decodeOtlpJsonTraceRequest(body: unknown): OtlpExportTraceServic
     }
 
     const scopeSpansRaw = rsRecord.scopeSpans
-    const scopeSpans: NonNullable<LucidOtelResourceSpans['scopeSpans']> = []
+    const scopeSpans: NonNullable<AfterimageOtelResourceSpans['scopeSpans']> = []
     if (Array.isArray(scopeSpansRaw)) {
       for (const scope of scopeSpansRaw) {
         if (!scope || typeof scope !== 'object') continue
         const spansRaw = (scope as Record<string, unknown>).spans
-        const spans: LucidOtelSpan[] = []
+        const spans: AfterimageOtelSpan[] = []
         if (Array.isArray(spansRaw)) {
           for (const span of spansRaw) {
             if (!span || typeof span !== 'object') continue

@@ -4,7 +4,7 @@ Afterimage has **two completely different kinds of agents**.
 
 ## Workspace agents (patients)
 
-- Live in your repo: `.lucid/agents.json` + observed runs
+- Live in your repo: `.afterimage/agents.json` + observed runs
 - Examples: Uma, Gitty, Auth, Appy
 - You manage them; they do **not** ship as part of Afterimage Hospital
 - Shown on **Your agents**
@@ -14,7 +14,7 @@ Afterimage has **two completely different kinds of agents**.
 - Live in the Afterimage package: `src/hospital/staff/`
 - Permanent intake / lab / doctors / treatment / recheck roles
 - Shown on **Hospital → Afterimage Hospital staff**
-- Never configured via `.lucid/agents.json`
+- Never configured via `.afterimage/agents.json`
 
 ```text
 Your agent gets sick
@@ -29,9 +29,9 @@ Chief Doctor diagnoses
         ↓
 Assigned to specialist
         ↓
-Treatment Agent (lucid fix)
+Treatment Agent (afterimage fix)
         ↓
-Recheck Nurse (lucid recheck)
+Recheck Nurse (afterimage recheck)
         ↓
 Agent returns to work
 ```

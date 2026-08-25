@@ -11,7 +11,7 @@ function configKeyFromAgentId(agentId: string): string {
   return agentId
 }
 
-/** Resolve display metadata from repo-local `.lucid/agents.json` only. */
+/** Resolve display metadata from repo-local `.afterimage/agents.json` only. */
 export function resolveAgentCatalog(
   agentId: string,
   repoAgents: RepoAgentsFile,

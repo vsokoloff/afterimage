@@ -1,7 +1,7 @@
 import http from 'node:http'
 
-import type { LucidObserver } from '../../observer.ts'
-import type { LucidStore } from '../../store.ts'
+import type { AfterimageObserver } from '../../observer.ts'
+import type { AfterimageStore } from '../../store.ts'
 import { createObserver } from '../../observer.ts'
 import { decodeOtlpJsonTraceRequest } from './decode.ts'
 import { otlpRequestToRecordableEvents } from './normalize.ts'
@@ -9,14 +9,14 @@ import { otlpRequestToRecordableEvents } from './normalize.ts'
 export type OtelGroupBy = 'trace' | 'conversation'
 
 export type OtlpHttpServerOptions = {
-  store: LucidStore
+  store: AfterimageStore
   host?: string
   port?: number
   /** Default: group spans by OTEL trace id into one afterimage run. */
   groupBy?: OtelGroupBy
   /** Finish a run after this many ms with no new spans (default 30_000). */
   idleFinishMs?: number
-  createObserver?: (store: LucidStore) => LucidObserver
+  createObserver?: (store: AfterimageStore) => AfterimageObserver
   onListen?: (info: { host: string; port: number; url: string }) => void
 }
 
@@ -29,7 +29,7 @@ export type OtlpHttpServer = {
 
 type ActiveIngest = {
   key: string
-  observer: LucidObserver
+  observer: AfterimageObserver
   runId: string
   idleTimer: ReturnType<typeof setTimeout> | null
   hadError: boolean
@@ -137,7 +137,7 @@ export async function startOtlpHttpServer(
 
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
         res.writeHead(200, { 'content-type': 'application/json' })
-        res.end(JSON.stringify({ ok: true, service: 'lucid-otlp', activeRuns: active.size }))
+        res.end(JSON.stringify({ ok: true, service: 'afterimage-otlp', activeRuns: active.size }))
         return
       }
 
@@ -164,7 +164,7 @@ export async function startOtlpHttpServer(
           const result = await ingestRequest(body)
           res.writeHead(200, { 'content-type': 'application/json' })
           // OTLP ExportTraceServiceResponse is empty object for success
-          res.end(JSON.stringify({ partialSuccess: {}, lucid: result }))
+          res.end(JSON.stringify({ partialSuccess: {}, afterimage: result, lucid: result }))
         } catch (error) {
           res.writeHead(400, { 'content-type': 'application/json' })
           res.end(

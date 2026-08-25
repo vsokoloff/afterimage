@@ -56,7 +56,7 @@ const CORE_STAFF: Omit<HospitalStaffMember, 'status'>[] = [
     id: 'treatment',
     name: 'Treatment Agent',
     title: 'Treatment',
-    duty: 'Applies the approved fix when you run lucid fix',
+    duty: 'Applies the approved fix when you run afterimage fix',
     stage: 'treatment',
     departmentId: null,
     characterId: 'treatment',
@@ -142,7 +142,7 @@ function withStatus(
   return { ...member, status }
 }
 
-/** Built-in Afterimage Hospital staff — never loaded from `.lucid/agents.json`. */
+/** Built-in Afterimage Hospital staff — never loaded from `.afterimage/agents.json`. */
 export function listHospitalStaff(): HospitalStaffMember[] {
   const core = CORE_STAFF.map((member) => withStatus(member, 'on_duty'))
   const specialists = SPECIALIST_DEFS.map((def) =>

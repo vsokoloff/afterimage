@@ -1,7 +1,7 @@
 import type { AgentEvent, AgentRun } from '../../events.ts'
 import type { Incident } from '../../incident.ts'
 import type { RootCauseDiagnosis } from '../../root-cause/types.ts'
-import type { LucidStore } from '../../store.ts'
+import type { AfterimageStore } from '../../store.ts'
 import type { StructuredTreatment } from '../types.ts'
 
 export type TreatmentPreview = {
@@ -17,7 +17,7 @@ export type TreatmentApplyResult = {
 }
 
 export type TreatmentAdapterContext = {
-  store: LucidStore
+  store: AfterimageStore
   incident: Incident
   treatment: StructuredTreatment
   rootCauseDiagnosis: RootCauseDiagnosis

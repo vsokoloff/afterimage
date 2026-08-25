@@ -9,7 +9,7 @@ import {
   createIncident,
   createRun,
   type CreateRunInput,
-  type LucidStore,
+  type AfterimageStore,
   updateRun,
 } from './store.ts'
 
@@ -35,7 +35,7 @@ export type RecordResult = {
 export type FinishRunStatus = Exclude<AgentRunStatus, 'running'>
 
 export type ObserverOptions = {
-  store: LucidStore
+  store: AfterimageStore
   /** Defaults to all shipped disease plugins. */
   diseases?: DiseasePlugin[]
 }
@@ -126,8 +126,8 @@ function incidentTitle(disease: DiseasePlugin, abnormality: Abnormality): string
  * Runtime observer: persist events, run shipped detectors, open incidents.
  * Independent of Codex/Cursor — call startRun → record → finishRun from any host.
  */
-export class LucidObserver {
-  readonly store: LucidStore
+export class AfterimageObserver {
+  readonly store: AfterimageStore
   private readonly diseases: DiseasePlugin[]
   private active: AgentRun | null = null
   private nextSequence = 1
@@ -280,6 +280,9 @@ export class LucidObserver {
   }
 }
 
-export function createObserver(options: ObserverOptions): LucidObserver {
-  return new LucidObserver(options)
+export function createObserver(options: ObserverOptions): AfterimageObserver {
+  return new AfterimageObserver(options)
 }
+
+/** @deprecated Use AfterimageObserver */
+export { AfterimageObserver as LucidObserver }

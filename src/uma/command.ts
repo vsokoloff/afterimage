@@ -1,4 +1,4 @@
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import { withObservedAgentWork } from '../agents/observe-work.ts'
 import {
   ensureUmaMemorySeed,
@@ -16,7 +16,7 @@ export type RunUmaCommandResult = {
 }
 
 export async function runUmaCommand(
-  store: LucidStore,
+  store: AfterimageStore,
   parsed: ParsedUmaArgv,
 ): Promise<RunUmaCommandResult> {
   if (parsed.action === 'help') {

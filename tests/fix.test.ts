@@ -103,7 +103,7 @@ test('parseFixArgv parses incident id and flags', () => {
 })
 
 test('instructions adapter preview shows before/after instruction hierarchy', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-preview-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-fix-preview-'))
   const { store, detail } = await seedRichIncident(storeRoot)
   assert.ok(detail.treatment)
   assert.ok(detail.rootCauseDiagnosis)
@@ -125,7 +125,7 @@ test('instructions adapter preview shows before/after instruction hierarchy', as
 })
 
 test('runFixCommand dry run shows diagnosis and treatment without writing artifacts', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-dry-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-fix-dry-'))
   const { store, incidentId } = await seedRichIncident(storeRoot)
   const { lines, logger } = captureLogger()
 
@@ -149,7 +149,7 @@ test('runFixCommand dry run shows diagnosis and treatment without writing artifa
 })
 
 test('runFixCommand requires confirmation before apply', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-no-confirm-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-fix-no-confirm-'))
   const { store, incidentId } = await seedRichIncident(storeRoot)
 
   const denied = await runFixCommand({
@@ -168,7 +168,7 @@ test('runFixCommand requires confirmation before apply', async () => {
 })
 
 test('runFixCommand apply and rollback restore prior Afterimage instruction overlay', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-rollback-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-fix-rollback-'))
   const { store, incidentId } = await seedRichIncident(storeRoot)
   const activePath = path.join(store.root, 'agent', 'instructions.json')
 
@@ -206,7 +206,7 @@ test('runFixCommand apply and rollback restore prior Afterimage instruction over
 })
 
 test('runFixCommand apply with existing overlay rolls back to previous contents', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-restore-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-fix-restore-'))
   const { store, incidentId, detail } = await seedRichIncident(storeRoot)
   const activePath = path.join(store.root, 'agent', 'instructions.json')
   const previous = `${JSON.stringify({ version: 1, authoritativeGoal: 'Keep legacy behavior' }, null, 2)}\n`
@@ -241,7 +241,7 @@ test('runFixCommand apply with existing overlay rolls back to previous contents'
 })
 
 test('runFixCommand rejects unsupported treatment targets', async () => {
-  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-unsupported-'))
+  const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-fix-unsupported-'))
   const store = await openStore({ projectRoot: storeRoot })
   const treatment: StructuredTreatment = {
     target: 'retry_policy',

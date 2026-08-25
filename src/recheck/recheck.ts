@@ -5,7 +5,7 @@ import { createObserver } from '../observer.ts'
 import { runCommand } from '../runtime/index.ts'
 import type { RuntimeObserveResult } from '../runtime/types.ts'
 import type { RecheckRecord } from '../incident.ts'
-import { getIncident, getRun, updateIncident, type LucidStore } from '../store.ts'
+import { getIncident, getRun, updateIncident, type AfterimageStore } from '../store.ts'
 import { extractReproductionFromRun, type ReproductionSpec } from './reproduction.ts'
 
 export type RecheckLogger = {
@@ -15,7 +15,7 @@ export type RecheckLogger = {
 
 export type RunRecheckCommandOptions = {
   incidentId: string
-  store: LucidStore
+  store: AfterimageStore
   /** Override reproduction when the linked run has no process_start (tests / manual). */
   reproduction?: ReproductionSpec
   runCommandFn?: (options: Parameters<typeof runCommand>[0]) => Promise<RuntimeObserveResult>
@@ -46,7 +46,7 @@ function resolveReproduction(
 }
 
 async function createSkippedRecheckRun(
-  store: LucidStore,
+  store: AfterimageStore,
   incidentId: string,
 ): Promise<Awaited<ReturnType<typeof getRun>>> {
   const observer = createObserver({ store })

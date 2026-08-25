@@ -3,7 +3,7 @@ import { constants as fsConstants } from 'node:fs'
 import path from 'node:path'
 
 import type { ProjectInstruction } from '../departments/types.ts'
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 
 export type InstructionStoreFile = {
   version: 1
@@ -14,7 +14,7 @@ function emptyStore(): InstructionStoreFile {
   return { version: 1, instructions: [] }
 }
 
-function instructionsPath(store: Pick<LucidStore, 'root'>): string {
+function instructionsPath(store: Pick<AfterimageStore, 'root'>): string {
   return path.join(store.root, 'instructions.json')
 }
 
@@ -28,7 +28,7 @@ async function exists(filePath: string): Promise<boolean> {
 }
 
 export async function loadProjectInstructions(
-  store: Pick<LucidStore, 'root'>,
+  store: Pick<AfterimageStore, 'root'>,
 ): Promise<ProjectInstruction[]> {
   const filePath = instructionsPath(store)
   if (!(await exists(filePath))) return []
@@ -45,7 +45,7 @@ export async function loadProjectInstructions(
 }
 
 export async function saveProjectInstructions(
-  store: Pick<LucidStore, 'root'>,
+  store: Pick<AfterimageStore, 'root'>,
   instructions: ProjectInstruction[],
 ): Promise<InstructionStoreFile> {
   const payload: InstructionStoreFile = {
@@ -58,7 +58,7 @@ export async function saveProjectInstructions(
 }
 
 export async function upsertProjectInstruction(
-  store: Pick<LucidStore, 'root'>,
+  store: Pick<AfterimageStore, 'root'>,
   instruction: ProjectInstruction,
 ): Promise<ProjectInstruction[]> {
   const existing = await loadProjectInstructions(store)

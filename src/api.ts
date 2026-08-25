@@ -16,7 +16,7 @@ import {
   listIncidents,
   listRuns,
   updateIncident,
-  type LucidStore,
+  type AfterimageStore,
 } from './store.ts'
 import { recommendTreatmentFromDiagnosis, type StructuredTreatment } from './treatment/index.ts'
 import { extractReproductionFromRun } from './recheck/reproduction.ts'
@@ -215,7 +215,7 @@ function buildRecheck(
 async function enrichIncident(
   incident: Incident,
   run: AgentRun | null,
-  store: LucidStore,
+  store: AfterimageStore,
   context: ApiContext = {},
 ): Promise<{
   incident: Incident
@@ -365,19 +365,19 @@ async function enrichIncident(
 async function diagnoseIncident(
   incident: Incident,
   run: AgentRun | null,
-  store: LucidStore,
+  store: AfterimageStore,
   context: ApiContext = {},
 ): Promise<{ severity: 'critical' | 'clear' | 'unknown' }> {
   const enriched = await enrichIncident(incident, run, store, context)
   return { severity: enriched.severity }
 }
 
-export async function fetchRuns(store: LucidStore): Promise<RunsListResponse> {
+export async function fetchRuns(store: AfterimageStore): Promise<RunsListResponse> {
   return { runs: await listRuns(store) }
 }
 
 export async function fetchRun(
-  store: LucidStore,
+  store: AfterimageStore,
   runId: string,
 ): Promise<RunDetailResponse | null> {
   const run = await getRun(store, runId)
@@ -385,7 +385,7 @@ export async function fetchRun(
   return { run }
 }
 
-export async function fetchIncidents(store: LucidStore): Promise<IncidentsListResponse> {
+export async function fetchIncidents(store: AfterimageStore): Promise<IncidentsListResponse> {
   const incidents = await listIncidents(store)
   const summaries: IncidentSummary[] = []
 
@@ -399,7 +399,7 @@ export async function fetchIncidents(store: LucidStore): Promise<IncidentsListRe
 }
 
 export async function fetchIncident(
-  store: LucidStore,
+  store: AfterimageStore,
   incidentId: string,
   context: ApiContext = {},
 ): Promise<IncidentDetailResponse | null> {

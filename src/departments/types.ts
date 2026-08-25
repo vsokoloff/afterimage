@@ -8,7 +8,7 @@ import {
 import type { FileEdit, LoopSignal, RootCause, Treatment } from '../types.ts'
 
 /**
- * Project-level instructions loaded from `.lucid/instructions.json`
+ * Project-level instructions loaded from `.afterimage/instructions.json`
  * and attached to a trace for instruction-amnesia detection.
  */
 export type ProjectInstruction = {

@@ -1,6 +1,6 @@
 # Afterimage ingestion standard
 
-Afterimage's durable observation contract is **`AgentEvent`**, not any host SDK and not raw OpenTelemetry. Every source normalizes into `RecordableEvent` and feeds `LucidObserver`. Detectors read `AgentRun.events` only; they never import adapters.
+Afterimage's durable observation contract is **`AgentEvent`**, not any host SDK and not raw OpenTelemetry. Every source normalizes into `RecordableEvent` and feeds `AfterimageObserver`. Detectors read `AgentRun.events` only; they never import adapters.
 
 ## Canonical sink
 
@@ -8,7 +8,7 @@ Afterimage's durable observation contract is **`AgentEvent`**, not any host SDK 
 adapter / OTEL normalize
         │
         ▼
-LucidObserver.startRun(input?)
+AfterimageObserver.startRun(input?)
         │
         ▼
 observer.record(RecordableEvent)   // fills id / runId / timestamp / sequence
@@ -78,7 +78,7 @@ Legacy attribute names are coalesced before mapping (`gen_ai.provider.name` ?? `
 ## Privacy
 
 - Prompt / completion / tool argument bodies follow OTEL: absent unless the exporter set content-capture attributes.
-- `file_write` follows Afterimage store privacy (`LUCID_STORE_FILE_CONTENT`); hash + path remain the loop-detector contract.
+- `file_write` follows Afterimage store privacy (`AFTERIMAGE_STORE_FILE_CONTENT` / legacy `LUCID_STORE_FILE_CONTENT`); hash + path remain the loop-detector contract.
 
 ## Correlation
 

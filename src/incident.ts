@@ -1,6 +1,6 @@
 /**
  * A hospital-facing incident derived from (or linked to) an agent run.
- * Persisted under `.lucid/incidents/` — separate from VisitCase fixtures.
+ * Persisted under `.afterimage/incidents/` — separate from VisitCase fixtures.
  */
 import type { StructuredTreatment } from './treatment/types.ts'
 import type { TreatmentApplicationRecord } from './treatment/adapters/types.ts'

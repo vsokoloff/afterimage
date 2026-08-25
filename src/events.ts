@@ -101,7 +101,7 @@ export type FileWriteEvent = AgentEventBase & {
   /**
    * Complete file contents after the write, when retained.
    * Prefer this for debugging and for building legacy `FileEdit` traces.
-   * Omitted by default (privacy-first); set LUCID_STORE_FILE_CONTENT=1 to keep.
+   * Omitted by default (privacy-first); set AFTERIMAGE_STORE_FILE_CONTENT=1 to keep.
    */
   content?: string
   /**
@@ -131,7 +131,7 @@ export type ErrorEvent = AgentEventBase & {
   code?: string
 }
 
-/** Subprocess wrapper observation (lucid run --). No agent internals claimed. */
+/** Subprocess wrapper observation (afterimage run --). No agent internals claimed. */
 export type ProcessStartEvent = AgentEventBase & {
   type: 'process_start'
   command: string[]

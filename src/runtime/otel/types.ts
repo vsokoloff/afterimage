@@ -23,7 +23,7 @@ export type OtelSpanStatus = {
   message?: string
 }
 
-export type LucidOtelSpan = {
+export type AfterimageOtelSpan = {
   traceId: string
   spanId: string
   parentSpanId?: string
@@ -35,22 +35,31 @@ export type LucidOtelSpan = {
   status?: OtelSpanStatus
 }
 
-export type LucidOtelResource = {
+export type AfterimageOtelResource = {
   attributes?: OtelAttributes
 }
 
-export type LucidOtelScopeSpans = {
-  spans?: LucidOtelSpan[]
+export type AfterimageOtelScopeSpans = {
+  spans?: AfterimageOtelSpan[]
 }
 
-export type LucidOtelResourceSpans = {
-  resource?: LucidOtelResource
-  scopeSpans?: LucidOtelScopeSpans[]
+export type AfterimageOtelResourceSpans = {
+  resource?: AfterimageOtelResource
+  scopeSpans?: AfterimageOtelScopeSpans[]
 }
+
+/** @deprecated Use AfterimageOtelSpan */
+export type LucidOtelSpan = AfterimageOtelSpan
+/** @deprecated Use AfterimageOtelResource */
+export type LucidOtelResource = AfterimageOtelResource
+/** @deprecated Use AfterimageOtelScopeSpans */
+export type LucidOtelScopeSpans = AfterimageOtelScopeSpans
+/** @deprecated Use AfterimageOtelResourceSpans */
+export type LucidOtelResourceSpans = AfterimageOtelResourceSpans
 
 /** Decoded OTLP ExportTraceServiceRequest (JSON). */
 export type OtlpExportTraceServiceRequest = {
-  resourceSpans?: LucidOtelResourceSpans[]
+  resourceSpans?: AfterimageOtelResourceSpans[]
 }
 
 export type GenAiOperationName =

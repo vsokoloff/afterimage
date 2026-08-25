@@ -16,7 +16,7 @@ import {
   parseJsonAttr,
 } from './coalesce.ts'
 import type {
-  LucidOtelSpan,
+  AfterimageOtelSpan,
   OtelAttributes,
   OtelSpanStatus,
   OtlpExportTraceServiceRequest,
@@ -35,7 +35,7 @@ const FILE_WRITE_TOOL_NAMES = new Set([
 ])
 
 export type OtelSpanBatch = {
-  spans: LucidOtelSpan[]
+  spans: AfterimageOtelSpan[]
   /** Resource-level attributes merged under each span when missing. */
   resourceAttributes?: OtelAttributes
 }
@@ -154,7 +154,7 @@ function pickPathAndContent(args: unknown): {
   return { path, content }
 }
 
-function spanSortKey(span: LucidOtelSpan): bigint {
+function spanSortKey(span: AfterimageOtelSpan): bigint {
   try {
     return BigInt(String(span.startTimeUnixNano ?? 0))
   } catch {
@@ -171,7 +171,7 @@ export function flattenOtlpTraceRequest(
   const batches: OtelSpanBatch[] = []
   for (const resourceSpan of request.resourceSpans ?? []) {
     const resourceAttributes = resourceSpan.resource?.attributes
-    const spans: LucidOtelSpan[] = []
+    const spans: AfterimageOtelSpan[] = []
     for (const scope of resourceSpan.scopeSpans ?? []) {
       for (const span of scope.spans ?? []) {
         spans.push(span)
@@ -189,7 +189,7 @@ export function flattenOtlpTraceRequest(
  * Ignores embeddings and unknown non-agent ops without gen_ai.operation.name.
  */
 export function otelSpansToRecordableEvents(
-  spans: LucidOtelSpan[],
+  spans: AfterimageOtelSpan[],
   options: { resourceAttributes?: OtelAttributes } = {},
 ): OtelNormalizeResult {
   const sorted = [...spans].sort((a, b) => {
@@ -431,7 +431,7 @@ export function otlpRequestToRecordableEvents(
   request: OtlpExportTraceServiceRequest,
 ): OtelNormalizeResult {
   const batches = flattenOtlpTraceRequest(request)
-  const allSpans: LucidOtelSpan[] = []
+  const allSpans: AfterimageOtelSpan[] = []
   let resourceAttributes: OtelAttributes | undefined
   for (const batch of batches) {
     resourceAttributes = resourceAttributes ?? batch.resourceAttributes

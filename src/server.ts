@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { fetchIncident, fetchIncidents, fetchRun, fetchRuns } from './api.ts'
 import { fetchActivity, fetchAgentProfile, fetchAgents } from './agents/index.ts'
 import { fetchWorkspace } from './workspace/index.ts'
-import { openStore, type LucidStore } from './store.ts'
+import { openStore, type AfterimageStore } from './store.ts'
 import { buildVisit } from './visit.ts'
 import { loadUmaMemory } from './uma/index.ts'
 import { listStaffForApi } from './hospital/index.ts'
@@ -26,7 +26,7 @@ const staticFiles = new Map([
 ])
 
 export type ServerContext = {
-  store: LucidStore
+  store: AfterimageStore
 }
 
 export type StartServerOptions = {
@@ -34,12 +34,12 @@ export type StartServerOptions = {
   host?: string
   /** Starting directory for resolving the workspace (default: process.cwd()). */
   cwd?: string
-  /** Override project root (parent of `.lucid/`). */
+  /** Override project root (parent of `.afterimage/`). */
   projectRoot?: string
-  /** Override `.lucid` location (tests). */
+  /** Override `.afterimage` location (tests). */
   storeRoot?: string
   /** Pre-opened store; overrides storeRoot/projectRoot. */
-  store?: LucidStore
+  store?: AfterimageStore
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
@@ -197,7 +197,7 @@ export function createServerInstance(context: ServerContext) {
 
 export async function startServer(
   options: StartServerOptions = {},
-): Promise<{ url: string; server: Server; store: LucidStore; workspace: LucidStore['workspace'] }> {
+): Promise<{ url: string; server: Server; store: AfterimageStore; workspace: AfterimageStore['workspace'] }> {
   const store =
     options.store ??
     (await openStore({

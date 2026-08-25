@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
 import type { RecordableEvent } from '../observer.ts'
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 import { withObservedAgentWork } from '../agents/observe-work.ts'
 import { rememberGittyPush, type GittyHabits } from './memory.ts'
 
@@ -17,7 +17,7 @@ const SECRET_BASENAMES = new Set([
 ])
 
 export type RunGittyPushOptions = {
-  store: LucidStore
+  store: AfterimageStore
   cwd?: string
   /** Override auto-drafted commit message. */
   message?: string | null
@@ -203,7 +203,7 @@ async function ensurePr(cwd: string, branch: string): Promise<string | null> {
 
 /**
  * Gitty push: always commit (if needed) → explain → push → take care of PRs.
- * Remembers that habit under `.lucid/gitty.json`.
+ * Remembers that habit under `.afterimage/gitty.json`.
  * Always runs under Afterimage observation as agent `gitty`.
  */
 export async function runGittyPush(

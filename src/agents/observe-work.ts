@@ -1,21 +1,21 @@
 import {
   createObserver,
   type FinishRunStatus,
-  type LucidObserver,
+  type AfterimageObserver,
   type RecordableEvent,
   type RecordResult,
 } from '../observer.ts'
 import type { AgentRun } from '../events.ts'
-import type { LucidStore } from '../store.ts'
+import type { AfterimageStore } from '../store.ts'
 
 export type ObservedAgentWorkContext = {
-  observer: LucidObserver
+  observer: AfterimageObserver
   run: AgentRun
   record: (event: RecordableEvent) => Promise<RecordResult>
 }
 
 export type WithObservedAgentWorkOptions<T> = {
-  store: LucidStore
+  store: AfterimageStore
   /** Dashboard agent id (e.g. gitty, uma). */
   agentId: string
   /**
@@ -26,7 +26,7 @@ export type WithObservedAgentWorkOptions<T> = {
   work: (ctx: ObservedAgentWorkContext) => Promise<T>
   /** Defaults from exit: completed if work returns, failed if it throws. */
   finishStatus?: FinishRunStatus | ((result: T) => FinishRunStatus)
-  createObserver?: (store: LucidStore) => LucidObserver
+  createObserver?: (store: AfterimageStore) => AfterimageObserver
 }
 
 /**

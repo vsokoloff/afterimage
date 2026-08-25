@@ -1,5 +1,5 @@
 import { mergeCausalContext, sha256Hex } from '../../events.ts'
-import type { LucidObserver, RecordableEvent, RecordResult } from '../../observer.ts'
+import type { AfterimageObserver, RecordableEvent, RecordResult } from '../../observer.ts'
 import { retainFileContentFromEnv, stripFileWriteBodies } from '../../privacy.ts'
 import type {
   CodexAssistantMessage,
@@ -382,7 +382,7 @@ export function finalizeFileWriteDraft(
 }
 
 export async function recordNormalizedEvents(
-  observer: LucidObserver,
+  observer: AfterimageObserver,
   events: RecordableEvent[],
   context: CodexNormalizeContext,
   retainFileContent?: boolean,
