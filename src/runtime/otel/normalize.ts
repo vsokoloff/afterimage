@@ -42,7 +42,7 @@ export type OtelSpanBatch = {
 
 export type OtelNormalizeResult = {
   events: RecordableEvent[]
-  /** Suggested Lucid agent id from GenAI agent/conversation attrs. */
+  /** Suggested Afterimage agent id from GenAI agent/conversation attrs. */
   agentId?: string
   conversationId?: string
   traceId?: string
@@ -163,7 +163,7 @@ function spanSortKey(span: LucidOtelSpan): bigint {
 }
 
 /**
- * Flatten an OTLP ExportTraceServiceRequest into Lucid spans with merged resource attrs.
+ * Flatten an OTLP ExportTraceServiceRequest into Afterimage spans with merged resource attrs.
  */
 export function flattenOtlpTraceRequest(
   request: OtlpExportTraceServiceRequest,

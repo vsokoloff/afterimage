@@ -204,7 +204,7 @@ async function ensurePr(cwd: string, branch: string): Promise<string | null> {
 /**
  * Gitty push: always commit (if needed) → explain → push → take care of PRs.
  * Remembers that habit under `.lucid/gitty.json`.
- * Always runs under Lucid observation as agent `gitty`.
+ * Always runs under Afterimage observation as agent `gitty`.
  */
 export async function runGittyPush(
   options: RunGittyPushOptions,

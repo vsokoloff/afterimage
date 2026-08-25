@@ -91,7 +91,7 @@ export async function runRecheckCommand(
 
   const reproduction = resolveReproduction(originalRun, options.reproduction)
 
-  logger.log('Lucid recheck')
+  logger.log('Afterimage recheck')
   logger.log(`  incident:  ${incident.id}`)
   logger.log(`  disease:   ${incident.department}/${incident.disease}`)
   logger.log(`  linked:    ${incident.runId}`)

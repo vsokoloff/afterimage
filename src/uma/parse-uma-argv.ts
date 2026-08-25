@@ -1,4 +1,4 @@
-/** Parse `lucid uma remember|show|forget …`. */
+/** Parse `afterimage uma remember|show|forget …`. */
 export type ParsedUmaArgv =
   | { action: 'help' }
   | { action: 'show'; about: string | null }

@@ -1,20 +1,28 @@
 /**
- * Privacy defaults for persisted Lucid events.
+ * Privacy defaults for persisted Afterimage events.
  *
- * By default `.lucid/` stores file hashes + metadata only.
- * Set `LUCID_STORE_FILE_CONTENT=1` (or pass `retainFileContent: true`) to keep
- * full source / hash-input bodies for debugging.
+ * By default `.afterimage/` stores file hashes + metadata only.
+ * Set `AFTERIMAGE_STORE_FILE_CONTENT=1` (or legacy `LUCID_STORE_FILE_CONTENT=1`)
+ * — or pass `retainFileContent: true` — to keep full source / hash-input bodies.
  */
 
 const TRUTHY = new Set(['1', 'true', 'yes', 'on'])
+
+function envFlag(env: NodeJS.ProcessEnv, ...keys: string[]): boolean {
+  for (const key of keys) {
+    const raw = env[key]
+    if (typeof raw === 'string' && TRUTHY.has(raw.trim().toLowerCase())) {
+      return true
+    }
+  }
+  return false
+}
 
 /** True when env opts in to retaining file bodies in stored events. */
 export function retainFileContentFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  const raw = env.LUCID_STORE_FILE_CONTENT
-  if (typeof raw !== 'string') return false
-  return TRUTHY.has(raw.trim().toLowerCase())
+  return envFlag(env, 'AFTERIMAGE_STORE_FILE_CONTENT', 'LUCID_STORE_FILE_CONTENT')
 }
 
 /**

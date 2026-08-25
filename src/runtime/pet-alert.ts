@@ -7,14 +7,14 @@ export type PetMood = 'cheerful' | 'worried'
 /** Tiny clinic kitty — cheerful. */
 export const KITTY_CHEERFUL = [
   '  /\\_/\\',
-  ' ( ^.^ )  Lucid Kitty',
+  ' ( ^.^ )  Kitty',
   '  > ^ <   all clear for now',
 ].join('\n')
 
 /** Tiny clinic kitty — worried (incident). */
 export const KITTY_WORRIED = [
   '  /\\_/\\',
-  ' ( o.o )  Lucid Kitty noticed something',
+  ' ( o.o )  Kitty noticed something',
   '  > ^ <',
 ].join('\n')
 
@@ -78,15 +78,15 @@ export function formatPetIncidentAlert(
 
 /** Short one-liner for OS notifications / chat chips. */
 export function formatPetIncidentToast(detection: IncidentDetected): string {
-  return `Lucid Kitty: ${diseaseBlurb(detection)}`
+  return `Afterimage: ${diseaseBlurb(detection)}`
 }
 
-/** Intro pet line when Lucid starts watching a Cursor session. */
+/** Intro pet line when Afterimage starts watching a Cursor session. */
 export function formatPetWatchingIntro(): string {
   return [
     kittyFace('cheerful'),
     '',
-    '  Lucid is watching this Cursor session in the background.',
+    '  Afterimage is watching this Cursor session in the background.',
     '  Keep prompting normally — Kitty will meow if something looks sick.',
   ].join('\n')
 }

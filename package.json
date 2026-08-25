@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Open-source local Lucid — incidents-first Hospital for agent failure patterns.",
+  "description": "A local med center for coding-agent failures — detect loops, scope explosions, and more.",
   "scripts": {
     "build": "tsc",
     "demo": "npm run build && node dist/src/demo.js",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "web": "npm run build && node dist/src/server.js",
-    "lucid": "npm run build && node dist/src/cli.js"
+    "afterimage": "npm run build && node dist/src/cli.js",
+    "lucid": "npm run afterimage"
   },
   "bin": {
-    "lucid": "./dist/src/cli.js",
-    "afterimage": "./dist/src/cli.js"
+    "afterimage": "./dist/src/cli.js",
+    "lucid": "./dist/src/cli.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -92,7 +92,7 @@ export function notifyPetDesktop(toast: string): void {
   try {
     const child = spawn(
       'osascript',
-      ['-e', `display notification ${JSON.stringify(toast)} with title "Lucid Kitty"`],
+      ['-e', `display notification ${JSON.stringify(toast)} with title "Afterimage"`],
       { stdio: 'ignore', detached: true },
     )
     child.unref()

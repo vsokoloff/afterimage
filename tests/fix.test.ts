@@ -167,7 +167,7 @@ test('runFixCommand requires confirmation before apply', async () => {
   )
 })
 
-test('runFixCommand apply and rollback restore prior Lucid instruction overlay', async () => {
+test('runFixCommand apply and rollback restore prior Afterimage instruction overlay', async () => {
   const storeRoot = await mkdtemp(path.join(os.tmpdir(), 'lucid-fix-rollback-'))
   const { store, incidentId } = await seedRichIncident(storeRoot)
   const activePath = path.join(store.root, 'agent', 'instructions.json')

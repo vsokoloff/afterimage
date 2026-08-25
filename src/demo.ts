@@ -30,7 +30,7 @@ function isBusy(error: unknown): boolean {
 try {
   const { url } = await startServer()
   console.log()
-  console.log(`Lucid: ${url}`)
+  console.log(`Afterimage: ${url}`)
   console.log('Demo path: Incidents → Auth Agent → Run diagnostics → lucid fix → recheck')
   console.log('Press Ctrl+C to stop.')
   openBrowser(url)

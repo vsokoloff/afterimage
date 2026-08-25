@@ -6,15 +6,22 @@ export type ParsedOtelArgv = {
 }
 
 /**
- * Parse `lucid otel [--host H] [--port N] [--group-by trace|conversation] [--idle-ms N]`.
+ * Parse `afterimage otel [--host H] [--port N] [--group-by trace|conversation] [--idle-ms N]`.
  */
 export function parseOtelArgv(argv: string[]): ParsedOtelArgv | null {
   // argv: node cli.js otel ...
   const args = argv.slice(3)
-  let host = process.env.LUCID_OTEL_HOST ?? '127.0.0.1'
-  let port = Number.parseInt(process.env.LUCID_OTEL_PORT ?? '4318', 10)
+  let host =
+    process.env.AFTERIMAGE_OTEL_HOST ?? process.env.LUCID_OTEL_HOST ?? '127.0.0.1'
+  let port = Number.parseInt(
+    process.env.AFTERIMAGE_OTEL_PORT ?? process.env.LUCID_OTEL_PORT ?? '4318',
+    10,
+  )
   let groupBy: 'trace' | 'conversation' = 'trace'
-  let idleFinishMs = Number.parseInt(process.env.LUCID_OTEL_IDLE_MS ?? '30000', 10)
+  let idleFinishMs = Number.parseInt(
+    process.env.AFTERIMAGE_OTEL_IDLE_MS ?? process.env.LUCID_OTEL_IDLE_MS ?? '30000',
+    10,
+  )
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]

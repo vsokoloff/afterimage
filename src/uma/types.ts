@@ -54,7 +54,7 @@ export function renderUmaMemoryMarkdown(memory: UmaMemoryFile): string {
   ]
 
   if (memory.entries.length === 0) {
-    lines.push('_No preferences yet. When the user tells Uma how a part of the UI should be, add it with `npm run lucid -- uma remember --about <part> -- <preference>`._')
+    lines.push('_No preferences yet. When the user tells Uma how a part of the UI should be, add it with `npm run afterimage -- uma remember --about <part> -- <preference>`._')
     lines.push('')
     return `${lines.join('\n')}\n`
   }

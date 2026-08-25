@@ -1,4 +1,4 @@
-/** Parse `lucid gitty push [--message <msg>] [--dry-run]`. */
+/** Parse `afterimage gitty push [--message <msg>] [--dry-run]`. */
 export type ParsedGittyArgv =
   | { action: 'push'; message: string | null; dryRun: boolean }
   | { action: 'help' }

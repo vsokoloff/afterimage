@@ -14,6 +14,7 @@ test('retainFileContentFromEnv accepts truthy opt-in values', () => {
   assert.equal(retainFileContentFromEnv({ LUCID_STORE_FILE_CONTENT: 'true' }), true)
   assert.equal(retainFileContentFromEnv({ LUCID_STORE_FILE_CONTENT: 'YES' }), true)
   assert.equal(retainFileContentFromEnv({ LUCID_STORE_FILE_CONTENT: 'on' }), true)
+  assert.equal(retainFileContentFromEnv({ AFTERIMAGE_STORE_FILE_CONTENT: '1' }), true)
 })
 
 test('stripFileWriteBodies removes content fields unless retained', () => {

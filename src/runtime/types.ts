@@ -8,7 +8,7 @@ import type { RunIncidentPolicy } from './policy.ts'
 /** Options shared by all runtime adapters that wrap an external process or agent. */
 export type RuntimeObserveOptions = {
   store: LucidStore
-  /** argv for the wrapped command (after `lucid run --`). */
+  /** argv for the wrapped command (after `afterimage run --`). */
   command: string[]
   cwd?: string
   env?: NodeJS.ProcessEnv

@@ -1,6 +1,6 @@
 import { listDepartments } from '../../departments/index.ts'
 
-/** Pipeline stage for Lucid Hospital staff. */
+/** Pipeline stage for Afterimage Hospital staff. */
 export type HospitalStaffStage =
   | 'intake'
   | 'lab'
@@ -142,7 +142,7 @@ function withStatus(
   return { ...member, status }
 }
 
-/** Built-in Lucid Hospital staff — never loaded from `.lucid/agents.json`. */
+/** Built-in Afterimage Hospital staff — never loaded from `.lucid/agents.json`. */
 export function listHospitalStaff(): HospitalStaffMember[] {
   const core = CORE_STAFF.map((member) => withStatus(member, 'on_duty'))
   const specialists = SPECIALIST_DEFS.map((def) =>

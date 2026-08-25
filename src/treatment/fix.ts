@@ -39,7 +39,7 @@ function printSection(title: string, body: string, logger: FixLogger): void {
 }
 
 function printIncidentSummary(detail: IncidentDetailResponse, logger: FixLogger): void {
-  logger.log('Lucid fix')
+  logger.log('Afterimage fix')
   logger.log(`  incident:  ${detail.incident.id}`)
   logger.log(`  title:     ${detail.incident.title}`)
   logger.log(`  status:    ${detail.incident.status}`)
@@ -180,7 +180,7 @@ export async function runFixCommand(options: RunFixCommandOptions): Promise<RunF
     logger.error(
       `No treatment adapter is implemented for target=${detail.treatment.target} rootCause=${detail.treatment.rootCauseType}.`,
     )
-    logger.error('Lucid fix never edits application source files directly.')
+    logger.error('Afterimage fix never edits application source files directly.')
     return { exitCode: 1 }
   }
 
@@ -200,12 +200,12 @@ export async function runFixCommand(options: RunFixCommandOptions): Promise<RunF
 
   if (!options.apply) {
     logger.log('')
-    logger.log('Dry run only. Re-run with --apply to change Lucid agent configuration after confirmation.')
+    logger.log('Dry run only. Re-run with --apply to change Afterimage agent configuration after confirmation.')
     return { exitCode: 0 }
   }
 
   if (detail.incident.treatmentApplication && !detail.incident.treatmentApplication.rolledBackAt) {
-    logger.error('Treatment already applied. Roll back first with `lucid fix <incident-id> --rollback --yes`.')
+    logger.error('Treatment already applied. Roll back first with `afterimage fix <incident-id> --rollback --yes`.')
     return { exitCode: 1 }
   }
 
@@ -235,10 +235,10 @@ export async function runFixCommand(options: RunFixCommandOptions): Promise<RunF
   await updateIncident(store, detail.incident.id, { treatmentApplication: application })
 
   logger.log('')
-  logger.log('Treatment applied to Lucid agent configuration (not application code).')
+  logger.log('Treatment applied to Afterimage agent configuration (not application code).')
   logger.log(`  artifact: ${applied.artifactPath}`)
   logger.log(`  backup:   ${applied.backupPath}`)
-  logger.log(`  rollback: npm run lucid -- fix ${detail.incident.id} --rollback --yes`)
+  logger.log(`  rollback: npm run afterimage -- fix ${detail.incident.id} --rollback --yes`)
 
   return { exitCode: 0, applied: true }
 }

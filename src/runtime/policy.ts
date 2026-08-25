@@ -1,4 +1,4 @@
-/** How lucid run reacts when a critical incident is detected mid-run. */
+/** How afterimage run reacts when a critical incident is detected mid-run. */
 export type RunIncidentPolicy = 'observe' | 'terminate-on-critical'
 
 export const DEFAULT_RUN_INCIDENT_POLICY: RunIncidentPolicy = 'observe'
@@ -10,9 +10,17 @@ export function parseRunIncidentPolicy(value: string): RunIncidentPolicy | null 
   return null
 }
 
+function envFirst(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]
+    if (typeof value === 'string' && value.length > 0) return value
+  }
+  return undefined
+}
+
 export function resolveRunIncidentPolicy(explicit?: RunIncidentPolicy): RunIncidentPolicy {
   if (explicit) return explicit
-  const fromEnv = process.env.LUCID_RUN_POLICY
+  const fromEnv = envFirst('AFTERIMAGE_RUN_POLICY', 'LUCID_RUN_POLICY')
   if (fromEnv) {
     const parsed = parseRunIncidentPolicy(fromEnv)
     if (parsed) return parsed
@@ -21,6 +29,9 @@ export function resolveRunIncidentPolicy(explicit?: RunIncidentPolicy): RunIncid
 }
 
 export function resolveWebBaseUrl(explicit?: string): string {
-  const raw = explicit ?? process.env.LUCID_WEB_URL ?? DEFAULT_WEB_BASE_URL
+  const raw =
+    explicit ??
+    envFirst('AFTERIMAGE_WEB_URL', 'LUCID_WEB_URL') ??
+    DEFAULT_WEB_BASE_URL
   return raw.replace(/\/$/, '')
 }

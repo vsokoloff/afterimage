@@ -11,7 +11,7 @@ import { buildVisit } from './visit.ts'
 import { loadUmaMemory } from './uma/index.ts'
 import { listStaffForApi } from './hospital/index.ts'
 
-/** Lucid package root — web assets ship with the CLI, not the managed repository. */
+/** Afterimage package root — web assets ship with the CLI, not the managed repository. */
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 const staticFiles = new Map([
@@ -203,7 +203,7 @@ export async function startServer(
     (await openStore({
       storeRoot: options.storeRoot,
       projectRoot: options.projectRoot,
-      cwd: options.cwd ?? process.env.LUCID_PROJECT_ROOT,
+      cwd: options.cwd ?? process.env.AFTERIMAGE_PROJECT_ROOT ?? process.env.LUCID_PROJECT_ROOT,
     }))
   const context: ServerContext = { store }
 
@@ -244,8 +244,9 @@ function isDirectRun(): boolean {
 }
 
 if (isDirectRun()) {
-  const cwd = process.env.LUCID_PROJECT_ROOT ?? process.cwd()
+  const cwd =
+    process.env.AFTERIMAGE_PROJECT_ROOT ?? process.env.LUCID_PROJECT_ROOT ?? process.cwd()
   const { url, workspace } = await startServer({ cwd })
-  console.log(`Lucid: ${url}`)
+  console.log(`Afterimage: ${url}`)
   console.log(`Workspace: ${workspace.label}`)
 }

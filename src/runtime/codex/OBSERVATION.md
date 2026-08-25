@@ -1,12 +1,12 @@
 # Codex SDK runtime observation
 
-Lucid’s first **agent-runtime adapter** targets the [Codex SDK](https://cursor.com/docs/sdk/typescript) (`@cursor/sdk`) — programmatic local/cloud agents with a normalized `run.stream()` event log.
+Afterimage's first **agent-runtime adapter** targets the [Codex SDK](https://cursor.com/docs/sdk/typescript) (`@cursor/sdk`) — programmatic local/cloud agents with a normalized `run.stream()` event log.
 
-Implementation lives under `src/runtime/codex/`. It feeds the same `LucidObserver → AgentEvent → detectors` path as `lucid run`; detectors never import Codex types.
+Implementation lives under `src/runtime/codex/`. It feeds the same `LucidObserver → AgentEvent → detectors` path as `afterimage run`; detectors never import Codex types.
 
 ## What the adapter observes
 
-| Codex source | Lucid `AgentEvent` | Notes |
+| Codex source | Afterimage `AgentEvent` | Notes |
 |---|---|---|
 | `task` / `user` prompt | `prompt` (`role: user`) | Task recorded once; stream `user` echo deduped when text matches |
 | `system` init | `prompt` (`role: system`) | Model id + tool list when present |
@@ -29,7 +29,7 @@ Implementation lives under `src/runtime/codex/`. It feeds the same `LucidObserve
 |---|---|
 | **IDE-only Cursor chat** | This adapter consumes Codex SDK `SDKMessage` streams, not Cursor Desktop transcript hooks |
 | **Token-level deltas** | `InteractionUpdate` / `onDelta` streams are not normalized (only `run.stream()` messages) |
-| **`task` / `request` / `usage` messages** | Ignored — no Lucid event mapping yet |
+| **`task` / `request` / `usage` messages** | Ignored — no Afterimage event mapping yet |
 | **Full file state from StrReplace** | Codex exposes patch fragments; loop detection may miss or mis-hash unless `Write` sends full contents |
 | **Shell stdout/stderr chunks** | Only start/end (+ optional test_result); no `process_output` streaming |
 | **Subprocess PID / signals** | Shell normalization omits `pid`; signals not exposed by SDK tool results |

@@ -13,7 +13,7 @@ import { resolveProjectRoot } from './workspace/identity.ts'
 import type { Workspace } from './workspace/identity.ts'
 
 export type LucidStore = {
-  /** Absolute path to the `.lucid` directory. */
+  /** Absolute path to the `.afterimage` directory (or legacy `.lucid`). */
   root: string
   /** Absolute path to the repository / project root. */
   projectRoot: string
@@ -25,16 +25,19 @@ export type LucidStore = {
   retainFileContent: boolean
 }
 
+/** Preferred name for the local store handle. */
+export type AfterimageStore = LucidStore
+
 export type OpenStoreOptions = {
   /** Starting directory for resolving the project root (default: process.cwd()). */
   cwd?: string
-  /** Project directory that should contain `.lucid/` (default: git root or cwd). */
+  /** Project directory that should contain `.afterimage/` (default: git root or cwd). */
   projectRoot?: string
-  /** Absolute `.lucid` path — overrides default layout. Useful in tests. */
+  /** Absolute store path — overrides default layout. Useful in tests. */
   storeRoot?: string
   /**
    * Keep full file bodies on `file_write` events.
-   * Defaults to `LUCID_STORE_FILE_CONTENT` env (off unless set).
+   * Defaults to `AFTERIMAGE_STORE_FILE_CONTENT` / legacy `LUCID_STORE_FILE_CONTENT`.
    */
   retainFileContent?: boolean
 }
@@ -92,7 +95,7 @@ async function readJsonl<T>(filePath: string): Promise<T[]> {
   return lines.map((line) => JSON.parse(line) as T)
 }
 
-/** Open (and create) a local `.lucid` store scoped to one repository. */
+/** Open (and create) a local `.afterimage` store scoped to one repository. */
 export async function openStore(options: OpenStoreOptions = {}): Promise<LucidStore> {
   const projectRoot = path.resolve(
     options.projectRoot ??
@@ -100,7 +103,20 @@ export async function openStore(options: OpenStoreOptions = {}): Promise<LucidSt
         ? path.dirname(path.resolve(options.storeRoot))
         : await resolveProjectRoot(options.cwd)),
   )
-  const root = options.storeRoot ? path.resolve(options.storeRoot) : path.join(projectRoot, '.lucid')
+  let root: string
+  if (options.storeRoot) {
+    root = path.resolve(options.storeRoot)
+  } else {
+    const preferred = path.join(projectRoot, '.afterimage')
+    const legacy = path.join(projectRoot, '.lucid')
+    if (await exists(preferred)) {
+      root = preferred
+    } else if (await exists(legacy)) {
+      root = legacy
+    } else {
+      root = preferred
+    }
+  }
   await mkdir(root, { recursive: true })
   const workspace = await ensureWorkspace({ root, projectRoot })
   const retainFileContent =

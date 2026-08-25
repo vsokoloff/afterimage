@@ -6,7 +6,15 @@ import { sha256Hex } from '../events.ts'
 
 export type WatchFn = typeof watch
 
-const IGNORED_DIR_NAMES = new Set(['.git', 'node_modules', '.lucid', 'dist', 'build', 'coverage'])
+const IGNORED_DIR_NAMES = new Set([
+  '.git',
+  'node_modules',
+  '.afterimage',
+  '.lucid',
+  'dist',
+  'build',
+  'coverage',
+])
 const IGNORED_EXTENSIONS = new Set([
   '.png',
   '.jpg',

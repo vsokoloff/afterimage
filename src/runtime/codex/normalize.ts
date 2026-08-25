@@ -12,13 +12,13 @@ import type {
 } from './types.ts'
 
 export type CodexNormalizeContext = {
-  /** Lucid run id — filled on each emitted RecordableEvent by the observer. */
+  /** afterimage run id — filled on each emitted RecordableEvent by the observer. */
   runId?: string
   /** User task recorded before the stream (may duplicate stream `user` echo). */
   taskText?: string
   model?: string
   cwd?: string
-  /** Maps Codex tool call_id → Lucid tool_call event id for causal links. */
+  /** Maps Codex tool call_id → Afterimage tool_call event id for causal links. */
   toolCallEventIds?: Map<string, string>
   /** Last user prompt event id on this run. */
   lastUserPromptEventId?: string
@@ -311,7 +311,7 @@ function normalizeStatus(message: Extract<CodexSDKMessage, { type: 'status' }>):
   }
 }
 
-/** Map one Codex SDK stream message to zero or more Lucid RecordableEvents. */
+/** Map one Codex SDK stream message to zero or more Afterimage RecordableEvents. */
 export function codexMessageToRecordableEvents(
   message: CodexSDKMessage,
   context: CodexNormalizeContext = {},

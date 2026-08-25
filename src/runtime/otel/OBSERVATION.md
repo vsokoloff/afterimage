@@ -1,14 +1,14 @@
-# OpenTelemetry GenAI → Lucid observation
+# OpenTelemetry GenAI → Afterimage observation
 
-Lucid’s **universal** runtime adapter accepts OTLP/HTTP GenAI traces and maps them to the same `RecordableEvent → LucidObserver → AgentEvent` path as process and Codex adapters. Detectors never import OTEL types.
+Afterimage's **universal** runtime adapter accepts OTLP/HTTP GenAI traces and maps them to the same `RecordableEvent → LucidObserver → AgentEvent` path as process and Codex adapters. Detectors never import OTEL types.
 
 Implementation: `src/runtime/otel/`.
 
-Canonical GenAI conventions: [semantic-conventions-genai](https://github.com/open-telemetry/semantic-conventions-genai). Conventions remain Development; Lucid coalesces legacy attribute names.
+Canonical GenAI conventions: [semantic-conventions-genai](https://github.com/open-telemetry/semantic-conventions-genai). Conventions remain Development; Afterimage coalesces legacy attribute names.
 
 ## What the adapter observes
 
-| GenAI / OTEL source | Lucid `AgentEvent` | Notes |
+| GenAI / OTEL source | Afterimage `AgentEvent` | Notes |
 |---|---|---|
 | `invoke_agent` / `invoke_workflow` / `create_agent` | run boundary + optional `prompt` | Prompt only when `gen_ai.input.messages` or `gen_ai.system_instructions` present |
 | `chat` / `generate_content` / `text_completion` | `model_response` | Model, provider, tokens, `responseId`, `finishReasons`; text from opted-in output messages |
@@ -27,7 +27,7 @@ Canonical GenAI conventions: [semantic-conventions-genai](https://github.com/ope
 
 ## Correlation
 
-Default: **one OTEL `trace_id` = one Lucid `AgentRun`**. Optional: group by `gen_ai.conversation.id` (`--group-by conversation`).
+Default: **one OTEL `trace_id` = one Afterimage `AgentRun`**. Optional: group by `gen_ai.conversation.id` (`--group-by conversation`).
 
 `gen_ai.agent.id` / `gen_ai.agent.name` → `AgentRun.agentId` when starting the run.
 
@@ -46,7 +46,7 @@ Default: **one OTEL `trace_id` = one Lucid `AgentRun`**. Optional: group by `gen
 ## Usage
 
 ```sh
-npm run lucid -- otel
+npm run afterimage -- otel
 # OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
 # POST /v1/traces  (application/json)
 ```

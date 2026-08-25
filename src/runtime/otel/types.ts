@@ -1,5 +1,5 @@
 /**
- * Minimal GenAI span shapes Lucid accepts after OTLP decode.
+ * Minimal GenAI span shapes Afterimage accepts after OTLP decode.
  * Attributes are a flat string-keyed map (OTLP AnyValue already unwrapped).
  */
 
@@ -68,14 +68,14 @@ export type GenAiOperationName =
 
 export type NormalizeOtelOptions = {
   /**
-   * How to group spans into Lucid runs when used by the receiver.
+   * How to group spans into afterimage runs when used by the receiver.
    * Normalizer itself returns events; correlation keys are attached via options callbacks.
    */
   groupBy?: 'trace' | 'conversation'
 }
 
 export type OtelNormalizeContext = {
-  /** Maps OTEL spanId → Lucid event id after record (filled by ingest layer). */
+  /** Maps OTEL spanId → Afterimage event id after record (filled by ingest layer). */
   spanEventIds?: Map<string, string>
   /** Last prompt / model event ids for causal hints within a batch. */
   lastPromptEventId?: string

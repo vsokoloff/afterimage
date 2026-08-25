@@ -1,23 +1,23 @@
 # Afterimage architecture
 
-Afterimage (product surface: **Lucid**) is a **local incidents + Hospital** tool for agent failure patterns.
+Afterimage (product surface: hospital UI) is a **local incidents + Hospital** tool for agent failure patterns.
 
 The website starts on **open incidents** and opens Hospital diagnostics directly. Detection and treatment live in the terminal / department plugins.
 
 ## Patients vs hospital staff
 
-Lucid has two agent kinds — do not mix them:
+Afterimage has two agent kinds — do not mix them:
 
 | Kind | Where | Examples | UI |
 |------|-------|----------|-----|
-| **Workspace agents (patients)** | Repo `.lucid/` + runs | Uma, Gitty, Auth | Your agents |
-| **Hospital staff** | Lucid package `src/hospital/staff/` | Intake, Lab, Chief, Loop Doctor, Recheck Nurse | Hospital staff roster |
+| **Workspace agents (patients)** | Repo `.afterimage/` + runs | Uma, Gitty, Auth | Your agents |
+| **Hospital staff** | Afterimage package `src/hospital/staff/` | Intake, Lab, Chief, Loop Doctor, Recheck Nurse | Hospital staff roster |
 
 Staff diagnose and treat patients. Patients never appear in the staff list; staff never appear in Your agents. Details: [docs/hospital-staff.md](docs/hospital-staff.md).
 
 ## Always observe dashboard agents
 
-Every agent on the Agents roster is a patient Lucid is watching. When they act through Lucid (Gitty push, Uma remember/show/forget, `lucid run`, Codex/OTEL adapters), work opens a real observed run so `lastSeenAt`, Activity, and Hospital stay honest. Shared helper: `withObservedAgentWork`. Legacy `subprocess` run ids roll up to **Gitty** on the roster.
+Every agent on the Agents roster is a patient Afterimage is watching. When they act through Afterimage (Gitty push, Uma remember/show/forget, `afterimage run`, Codex/OTEL adapters), work opens a real observed run so `lastSeenAt`, Activity, and Hospital stay honest. Shared helper: `withObservedAgentWork`. Legacy `subprocess` run ids roll up to **Gitty** on the roster.
 
 ## Local-first
 
@@ -31,21 +31,21 @@ Every agent on the Agents roster is a patient Lucid is watching. When they act t
 SPA with sidebar:
 
 ```text
-Lucid
+Afterimage
 Incidents (default) · Agents · Activity · Memory
 ———
-System: ✓ Lucid running
+System: ✓ Afterimage running
 ```
 
 - **Incidents** — open failures first; click opens Hospital diagnostics (no Agents → View → Send gate)
-- **Hospital visit** — progressive tests → diagnosis → root cause → treatment + `lucid fix` CLI → recheck → cleared → back to Incidents
+- **Hospital visit** — progressive tests → diagnosis → root cause → treatment + `afterimage fix` CLI → recheck → cleared → back to Incidents
 - **Agents** — optional roster / routing (secondary)
 - **Activity** — chronological feed
 - **Memory** — cross-agent learned lessons
 
 Fixtures: `web/data/agents.js`. Auth Agent hospital loads **real** hashes/evidence from `GET /api/visit`. Other agents are mock. Stub departments are labeled **Mock** in the UI.
 
-`lucid fix` is CLI-oriented: the UI shows the terminal command and a **simulate applied** demo control — it does not pretend to patch agent code in the browser.
+`afterimage fix` is CLI-oriented: the UI shows the terminal command and a **simulate applied** demo control — it does not pretend to patch agent code in the browser.
 
 ## Hospital = departments (plugins)
 
@@ -109,9 +109,9 @@ Auth Agent incident fields:
 
 ## Observation / ingestion
 
-Lucid’s durable contract is **`AgentEvent`**. Host adapters (process, Codex, future Cursor/Claude) and the **OpenTelemetry GenAI** path all normalize to `RecordableEvent` → `LucidObserver`. Detectors never import adapters.
+Afterimage's durable contract is **`AgentEvent`**. Host adapters (process, Codex, future Cursor/Claude) and the **OpenTelemetry GenAI** path all normalize to `RecordableEvent` → `LucidObserver`. Detectors never import adapters.
 
-See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute mapping, and `lucid otel` (OTLP/HTTP `:4318`).
+See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute mapping, and `afterimage otel` (OTLP/HTTP `:4318`).
 
 ## Shipped path
 
@@ -128,17 +128,17 @@ See [docs/ingestion.md](docs/ingestion.md) for adapter tiers, GenAI attribute ma
 
 | Command | Today |
 |---|---|
-| `lucid init` | Initialize `.lucid/` for this repository |
-| `lucid attach cursor` | Install Cursor hooks (normal Agent chats → Lucid) |
-| `lucid otel` | Local OTLP/HTTP GenAI traces → AgentEvent |
-| `lucid status` | Fixture status |
-| `lucid doctor` | Run primary disease on the fixture |
-| `lucid inspect` | Evidence + diagnosis |
-| `lucid fix` | Print treatment; no auto-apply |
-| `lucid recheck` | Verify post-treatment fixture |
-| `lucid departments` | List registry |
+| `afterimage init` | Initialize `.lucid/` for this repository |
+| `afterimage attach cursor` | Install Cursor hooks (normal Agent chats → Afterimage) |
+| `afterimage otel` | Local OTLP/HTTP GenAI traces → AgentEvent |
+| `afterimage status` | Fixture status |
+| `afterimage doctor` | Run primary disease on the fixture |
+| `afterimage inspect` | Evidence + diagnosis |
+| `afterimage fix` | Print treatment; no auto-apply |
+| `afterimage recheck` | Verify post-treatment fixture |
+| `afterimage departments` | List registry |
 
-Use `npm run lucid -- <cmd>` (not a published global package yet).
+Use `npm run afterimage -- <cmd>` (not a published global package yet).
 
 ## Adding a disease
 

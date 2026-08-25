@@ -90,7 +90,7 @@ async function fileWriteFromPath(
 }
 
 /**
- * Normalize one Cursor hook payload into Lucid RecordableEvents.
+ * Normalize one Cursor hook payload into Afterimage RecordableEvents.
  * Reads the on-disk file after edits so hashing matches the real post-edit state.
  */
 export async function cursorHookToRecordableEvents(

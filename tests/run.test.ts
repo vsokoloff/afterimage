@@ -245,7 +245,7 @@ test('runCommand prints mid-run incident alert via callback', async () => {
     })
 
     assert.equal(result.detections.length, 1)
-    assert.match(alerts.join(''), /Lucid Kitty noticed something/)
+    assert.match(alerts.join(''), /Kitty noticed something/)
     assert.match(alerts.join(''), /incident:\s+inc_/)
     assert.match(alerts.join(''), /auth\.py|loop-target\.txt|meow:/)
     assert.match(alerts.join(''), /view:\s+http:\/\/127\.0\.0\.1:3000\/#\/incidents\/inc_/)

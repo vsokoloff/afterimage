@@ -1,6 +1,6 @@
 /**
  * Minimal mirror of `@cursor/sdk` stream types (`SDKMessage`, `RunResult`).
- * Lucid does not depend on `@cursor/sdk` — these shapes match the public docs
+ * Afterimage does not depend on `@cursor/sdk` — these shapes match the public docs
  * so recorded fixtures and live streams share one normalization path.
  *
  * @see https://cursor.com/docs/sdk/typescript#stream-events

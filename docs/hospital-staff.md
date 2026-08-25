@@ -1,25 +1,25 @@
-# Lucid Hospital staff
+# Afterimage Hospital staff
 
-Lucid has **two completely different kinds of agents**.
+Afterimage has **two completely different kinds of agents**.
 
 ## Workspace agents (patients)
 
 - Live in your repo: `.lucid/agents.json` + observed runs
 - Examples: Uma, Gitty, Auth, Appy
-- You manage them; they do **not** ship as part of Lucid Hospital
+- You manage them; they do **not** ship as part of Afterimage Hospital
 - Shown on **Your agents**
 
-## Hospital staff (built into Lucid)
+## Hospital staff (built into Afterimage)
 
-- Live in the Lucid package: `src/hospital/staff/`
+- Live in the Afterimage package: `src/hospital/staff/`
 - Permanent intake / lab / doctors / treatment / recheck roles
-- Shown on **Hospital → Lucid Hospital staff**
+- Shown on **Hospital → Afterimage Hospital staff**
 - Never configured via `.lucid/agents.json`
 
 ```text
 Your agent gets sick
         ↓
-Check into Lucid (incident)
+Check into Afterimage (incident)
         ↓
 Intake Doctor
         ↓
@@ -42,8 +42,8 @@ Agent returns to work
 | Diagnostics Lab | `disease.detect` + evidence |
 | Chief Doctor | Root-cause diagnosis |
 | Loop / Memory / Instruction / Tool / Efficiency Doctors | Department plugins |
-| Treatment Agent | `lucid fix` |
-| Recheck Nurse | `lucid recheck` |
+| Treatment Agent | `afterimage fix` |
+| Recheck Nurse | `afterimage recheck` |
 
 Specialists with only stub diseases show as **Not on duty yet**. Loop Doctor is **on duty** because `repeated-file-state` is shipped.
 

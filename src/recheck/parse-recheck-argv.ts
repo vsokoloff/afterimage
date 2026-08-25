@@ -1,4 +1,4 @@
-/** Parse `lucid recheck <incident-id>`. */
+/** Parse `afterimage recheck <incident-id>`. */
 export type ParsedRecheckArgv = {
   incidentId: string
 }

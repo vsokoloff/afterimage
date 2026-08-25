@@ -1,4 +1,4 @@
-/** Parse `lucid fix <incident-id> [--apply] [--yes] [--rollback]`. */
+/** Parse `afterimage fix <incident-id> [--apply] [--yes] [--rollback]`. */
 export type ParsedFixArgv = {
   incidentId: string
   apply: boolean

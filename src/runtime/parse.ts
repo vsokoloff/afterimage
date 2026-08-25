@@ -7,7 +7,7 @@ export type ParsedRunArgv = {
 }
 
 /**
- * Parse `lucid run [flags] -- <command...>` from process.argv.
+ * Parse `afterimage run [flags] -- <command...>` from process.argv.
  * Expects argv like: [node, cli.js, run, --policy observe, --, ...commandParts]
  */
 export function parseRunArgv(argv: string[]): ParsedRunArgv | null {

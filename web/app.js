@@ -33,7 +33,7 @@ function renderWorkspaceBanner(workspace) {
     workspaceLabel.textContent = `Workspace: ${workspace.label}`
     workspaceLabel.title = workspace.root
   }
-  document.title = `Lucid — ${workspace.label}`
+  document.title = `Afterimage — ${workspace.label}`
 }
 
 function el(tag, className, text) {
@@ -333,7 +333,7 @@ async function renderAgentsPage() {
   if (!data.agents.length) {
     content.append(
       emptyState(
-        'No agents here yet. When someone works in this repo with Lucid watching, they’ll show up.',
+        'No agents here yet. When someone works in this repo with Afterimage watching, they’ll show up.',
       ),
     )
     return
@@ -673,14 +673,14 @@ async function renderHospitalPage() {
     el(
       'p',
       '',
-      'Lucid staff diagnose and treat your workspace agents. Staff ship with Lucid; patients are yours.',
+      'Afterimage staff diagnose and treat your workspace agents. Staff ship with Afterimage; patients are yours.',
     ),
   )
   content.append(head)
 
   const staffSection = el('section', 'hospital-staff')
   staffSection.append(
-    el('h2', 'incident-group-title', 'Lucid Hospital staff'),
+    el('h2', 'incident-group-title', 'Afterimage Hospital staff'),
     el(
       'p',
       'hospital-staff-note',
@@ -988,7 +988,7 @@ async function renderIncidentDetail(incidentId) {
     const cli = el('pre', 'cli-block')
     cli.append(
       el('span', 'prompt', '$ '),
-      el('span', 'cmd', `npm run lucid -- fix ${incident.id}`),
+      el('span', 'cmd', `npm run afterimage -- fix ${incident.id}`),
     )
     treatmentBox.append(cli)
     show.addEventListener('click', () => {
@@ -1123,7 +1123,7 @@ async function render() {
   } catch (error) {
     console.error(error)
     bootError.hidden = false
-    content.replaceChildren(emptyState('Could not load Lucid. Is the server running?'))
+    content.replaceChildren(emptyState('Could not load Afterimage. Is the server running?'))
   }
 }
 

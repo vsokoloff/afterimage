@@ -7,7 +7,7 @@ import type { TreatmentApplicationRecord } from './treatment/adapters/types.ts'
 
 export type IncidentStatus = 'open' | 'in_hospital' | 'cleared' | 'closed'
 
-/** Persisted outcome of a `lucid recheck` verification run. */
+/** Persisted outcome of a `afterimage recheck` verification run. */
 export type RecheckRecord = {
   runId: string
   passed: boolean
@@ -29,7 +29,7 @@ export type Incident = {
   disease?: string
   /** Structured treatment persisted after root-cause diagnosis. */
   treatment?: StructuredTreatment
-  /** Last applied treatment artifact (Lucid agent config — not app code). */
+  /** Last applied treatment artifact (Afterimage agent config — not app code). */
   treatmentApplication?: TreatmentApplicationRecord
   /** Latest linked recheck run and verification outcome. */
   lastRecheck?: RecheckRecord

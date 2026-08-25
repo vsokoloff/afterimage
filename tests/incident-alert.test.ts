@@ -40,7 +40,7 @@ function sampleDetection(): IncidentDetected {
 test('formatIncidentAlert includes incident id, file, turns, url, and observe policy', () => {
   const alert = formatIncidentAlert(sampleDetection(), 'http://127.0.0.1:3000', 'observe')
 
-  assert.match(alert, /Lucid Kitty noticed something/)
+  assert.match(alert, /Kitty noticed something/)
   assert.match(alert, /incident:\s+inc_alert_test/)
   assert.match(alert, /auth\.py/)
   assert.match(alert, /turns:\s+2 → 4/)

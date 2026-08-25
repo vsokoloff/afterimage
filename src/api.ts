@@ -207,7 +207,7 @@ function buildRecheck(
     available: Boolean(reproduction),
     passed: null,
     evidence: reproduction
-      ? 'No recheck run recorded yet. Run `lucid recheck <incident-id>`.'
+      ? 'No recheck run recorded yet. Run `afterimage recheck <incident-id>`.'
       : 'Recheck needs a reproduction command from the original run (process_start).',
   }
 }

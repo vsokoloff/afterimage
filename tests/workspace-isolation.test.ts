@@ -19,7 +19,7 @@ const execFileAsync = promisify(execFile)
 async function initGitRepo(dir: string, remoteUrl?: string) {
   await execFileAsync('git', ['init'], { cwd: dir })
   await execFileAsync('git', ['config', 'user.email', 'lucid@test.local'], { cwd: dir })
-  await execFileAsync('git', ['config', 'user.name', 'Lucid Test'], { cwd: dir })
+  await execFileAsync('git', ['config', 'user.name', 'Afterimage Test'], { cwd: dir })
   await writeFile(path.join(dir, 'README.md'), '# test repo\n', 'utf8')
   await execFileAsync('git', ['add', 'README.md'], { cwd: dir })
   await execFileAsync('git', ['commit', '-m', 'init'], { cwd: dir })
@@ -119,7 +119,7 @@ test('agent appears from repo config before any run, and uses config name after 
   }
 })
 
-test('opening Lucid from each repo serves the correct workspace', async () => {
+test('opening Afterimage from each repo serves the correct workspace', async () => {
   const repoA = await mkdtemp(path.join(os.tmpdir(), 'lucid-open-a-'))
   const repoB = await mkdtemp(path.join(os.tmpdir(), 'lucid-open-b-'))
   try {

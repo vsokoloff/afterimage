@@ -119,7 +119,7 @@ export async function handleCursorHook(
       response: {
         additional_context: fresh
           ? intro
-          : 'Lucid Kitty is still watching this conversation.',
+          : 'Kitty is still watching this conversation.',
       },
       detections: [],
       petAlert: intro,

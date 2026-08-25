@@ -48,17 +48,17 @@ function sampleLoopDetection(): IncidentDetected {
   }
 }
 
-test('pet alert shows Lucid Kitty face and disease blurb', () => {
+test('pet alert shows Kitty face and disease blurb', () => {
   const alert = formatPetIncidentAlert(sampleLoopDetection(), 'http://127.0.0.1:3000')
   assert.match(alert, /\/\\_\/\\/)
-  assert.match(alert, /Lucid Kitty noticed something/)
+  assert.match(alert, /Kitty noticed something/)
   assert.match(alert, /auth\.py looped back to an old state/)
   assert.match(alert, /inc_alert_test/)
 })
 
 test('formatIncidentAlert is pet-styled', () => {
   const alert = formatIncidentAlert(sampleLoopDetection(), 'http://127.0.0.1:3000', 'observe')
-  assert.match(alert, /Lucid Kitty noticed something/)
+  assert.match(alert, /Kitty noticed something/)
   assert.match(alert, /meow:/)
   assert.match(alert, /policy:\s+observe/)
 })
@@ -141,7 +141,7 @@ test('cursor hooks detect A→B→A across afterFileEdit invocations', async () 
 
     assert.equal(third.detections.length, 1)
     assert.equal(third.detections[0]?.disease, 'repeated-file-state')
-    assert.match(alerts.join(''), /Lucid Kitty noticed something/)
+    assert.match(alerts.join(''), /Kitty noticed something/)
     assert.match(third.petAlert ?? '', /auth\.py/)
 
     const incidents = await listIncidents(store)
@@ -189,7 +189,7 @@ test('sessionStart returns kitty watching intro', async () => {
       },
     })
     assert.ok(result.response)
-    assert.match(String(result.response.additional_context), /Lucid Kitty|watching/)
+    assert.match(String(result.response.additional_context), /Kitty|watching/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

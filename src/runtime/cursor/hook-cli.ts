@@ -27,7 +27,7 @@ export async function runCursorHookCli(): Promise<void> {
       payload = JSON.parse(raw) as CursorHookPayload
     } catch (error) {
       process.stderr.write(
-        `Lucid Cursor hook: invalid JSON stdin: ${error instanceof Error ? error.message : String(error)}\n`,
+        `Afterimage Cursor hook: invalid JSON stdin: ${error instanceof Error ? error.message : String(error)}\n`,
       )
       process.stdout.write('{}\n')
       return
@@ -45,9 +45,9 @@ export async function runCursorHookCli(): Promise<void> {
     }
   } catch (error) {
     process.stderr.write(
-      `Lucid Cursor hook failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      `Afterimage Cursor hook failed: ${error instanceof Error ? error.message : String(error)}\n`,
     )
-    // Fail open — never block the agent on Lucid errors.
+    // Fail open — never block the agent on Afterimage errors.
     process.stdout.write('{}\n')
     process.exitCode = 0
   }

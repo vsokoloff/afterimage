@@ -118,7 +118,7 @@ function decodeSpan(raw: Record<string, unknown>): LucidOtelSpan | null {
 }
 
 /**
- * Normalize an OTLP/HTTP JSON ExportTraceServiceRequest body into Lucid shapes.
+ * Normalize an OTLP/HTTP JSON ExportTraceServiceRequest body into Afterimage shapes.
  * Accepts both OTLP KeyValue attribute arrays and already-flat attribute maps.
  */
 export function decodeOtlpJsonTraceRequest(body: unknown): OtlpExportTraceServiceRequest {

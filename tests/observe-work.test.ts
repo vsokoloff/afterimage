@@ -16,7 +16,7 @@ describe('observed agent work', () => {
     assert.equal(canonicalDashboardAgentId('uma'), 'uma')
   })
 
-  it('records a Lucid run so lastSeenAt updates', async () => {
+  it('records a afterimage run so lastSeenAt updates', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'lucid-observe-work-'))
     try {
       const store = await openStore({

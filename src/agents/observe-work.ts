@@ -30,7 +30,7 @@ export type WithObservedAgentWorkOptions<T> = {
 }
 
 /**
- * Every dashboard agent action should run under Lucid observation so
+ * Every dashboard agent action should run under Afterimage observation so
  * lastSeenAt / Activity / Hospital stay honest.
  */
 export async function withObservedAgentWork<T>(

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Thin local CLI for the Afterimage hospital.
- * Not a published global package yet — use `npm run lucid -- <cmd>`.
+ * Not a published global package yet — use `npm run afterimage -- <cmd>`.
  */
 import { authWriterCase } from './case.ts'
 import {
@@ -24,17 +24,17 @@ import { parseRecheckArgv, runRecheckCommand } from './recheck/index.ts'
 import { parseGittyArgv, runGittyPush } from './gitty/index.ts'
 import { parseUmaArgv, runUmaCommand, ensureUmaMemorySeed } from './uma/index.ts'
 
-const USAGE = `Lucid hospital (local)
+const USAGE = `Afterimage (local)
 
 Usage:
-  npm run lucid -- <command>
+  npm run afterimage -- <command>
 
 Commands:
   run [options] -- <cmd...>
-                   Run a command under Lucid observation (persists a run)
+                   Run a command under Afterimage observation (persists a run)
   otel [options]   Accept OTLP/HTTP GenAI traces → AgentEvent (local :4318)
-  init             Initialize .lucid/ for this repository
-  open             Open the Lucid dashboard for this repository
+  init             Initialize .afterimage/ for this repository
+  open             Open the Afterimage dashboard for this repository
   attach cursor    Install Cursor hooks so normal Agent chats are observed
   status           Show fixture incident status
   doctor           Run Looping → repeated-file-state on the fixture
@@ -56,32 +56,33 @@ Otel options:
   --host H         Bind address (default: 127.0.0.1)
   --port N         OTLP/HTTP port (default: 4318)
   --group-by trace|conversation
-                   Correlate spans into Lucid runs (default: trace)
+                   Correlate spans into afterimage runs (default: trace)
   --idle-ms N      Finish run after idle gap (default: 30000)
 
-  npm run lucid -- init
-  npm run lucid -- attach cursor
-  npm run lucid -- open
-  npm run lucid -- otel
-  npm run lucid -- otel --port 4318 --group-by conversation
-  npm run lucid -- run -- node -e "console.log('hi')"
-  npm run lucid -- run --policy observe -- node ./agent.mjs
-  npm run lucid -- fix inc_abc123
-  npm run lucid -- fix inc_abc123 --apply --yes
-  npm run lucid -- fix inc_abc123 --rollback --yes
-  npm run lucid -- recheck inc_abc123
-  npm run lucid -- gitty push
-  npm run lucid -- gitty push --message "why this change"
-  npm run lucid -- uma remember --about hero -- Full-bleed photo, brand first
-  npm run lucid -- uma show
+  npm run afterimage -- init
+  npm run afterimage -- attach cursor
+  npm run afterimage -- open
+  npm run afterimage -- otel
+  npm run afterimage -- otel --port 4318 --group-by conversation
+  npm run afterimage -- run -- node -e "console.log('hi')"
+  npm run afterimage -- run --policy observe -- node ./agent.mjs
+  npm run afterimage -- fix inc_abc123
+  npm run afterimage -- fix inc_abc123 --apply --yes
+  npm run afterimage -- fix inc_abc123 --rollback --yes
+  npm run afterimage -- recheck inc_abc123
+  npm run afterimage -- gitty push
+  npm run afterimage -- gitty push --message "why this change"
+  npm run afterimage -- uma remember --about hero -- Full-bleed photo, brand first
+  npm run afterimage -- uma show
 
 Shipped detectors include repeated-file-state plus scope-explosion, prior-fix-regressed,
 instruction-amnesia, and redundant-rewrite.
-\`lucid attach cursor\` watches normal Cursor Agent sessions via hooks (no prompt change).
-Lucid Kitty meows when something looks sick (terminal + optional macOS notification).
-lucid otel accepts GenAI OTLP/HTTP JSON traces (see docs/ingestion.md).
+\`afterimage attach cursor\` watches normal Cursor Agent sessions via hooks (no prompt change).
+Kitty meows when something looks sick (terminal + optional macOS notification).
+afterimage otel accepts GenAI OTLP/HTTP JSON traces (see docs/ingestion.md).
 Gitty remembers: whenever the codebase changes, commit + explain + push + PR care (same as "gitty push").
 Uma remembers: how you want each part of the UI to look and feel.
+(lucid is a temporary alias for the same CLI.)
 `
 
 function contextFromCase() {
@@ -101,7 +102,7 @@ function fixtureBefore() {
 async function cmdInit(): Promise<number> {
   const store = await openStore({ cwd: process.cwd() })
   const { workspace } = await initWorkspaceStore(store)
-  console.log('Lucid initialized')
+  console.log('Afterimage initialized')
   console.log(`  workspace: ${workspace.label}`)
   console.log(`  store:     ${store.root}`)
   console.log(`  id:        ${workspace.id}`)
@@ -113,7 +114,7 @@ async function cmdOpen(): Promise<number> {
   await initWorkspaceStore(store)
 
   const requested = Number.parseInt(process.env.PORT ?? '3000', 10)
-  const host = process.env.LUCID_HOST ?? '127.0.0.1'
+  const host = process.env.AFTERIMAGE_HOST ?? process.env.LUCID_HOST ?? '127.0.0.1'
 
   const { url, workspace } = await startServer({
     cwd: process.cwd(),
@@ -122,7 +123,7 @@ async function cmdOpen(): Promise<number> {
     host,
   })
 
-  console.log(`Lucid: ${url}`)
+  console.log(`Afterimage: ${url}`)
   console.log(`Workspace: ${workspace.label}`)
   console.log('Press Ctrl+C to stop.')
   return 0
@@ -132,7 +133,7 @@ async function cmdOtel(): Promise<number> {
   const parsed = parseOtelArgv(process.argv)
   if (!parsed) {
     console.error(
-      'Usage: npm run lucid -- otel [--host 127.0.0.1] [--port 4318] [--group-by trace|conversation] [--idle-ms 30000]',
+      'Usage: npm run afterimage -- otel [--host 127.0.0.1] [--port 4318] [--group-by trace|conversation] [--idle-ms 30000]',
     )
     return 1
   }
@@ -146,7 +147,7 @@ async function cmdOtel(): Promise<number> {
     idleFinishMs: parsed.idleFinishMs,
   })
 
-  console.log('Lucid OTEL receiver')
+  console.log('Afterimage OTEL receiver')
   console.log(`  POST ${server.url}/v1/traces  (application/json)`)
   console.log(`  group-by:  ${parsed.groupBy}`)
   console.log(`  idle-ms:   ${parsed.idleFinishMs}`)
@@ -166,7 +167,7 @@ async function cmdOtel(): Promise<number> {
 async function cmdRun(): Promise<number> {
   const parsed = parseRunArgv(process.argv)
   if (!parsed) {
-    console.error('Usage: npm run lucid -- run -- <command...>')
+    console.error('Usage: npm run afterimage -- run -- <command...>')
     return 1
   }
 
@@ -179,7 +180,7 @@ async function cmdRun(): Promise<number> {
     webBaseUrl: resolveWebBaseUrl(parsed.webBaseUrl),
   })
 
-  console.log('Lucid run complete')
+  console.log('afterimage run complete')
   console.log(`  run id:    ${result.run.id}`)
   console.log(`  status:    ${result.run.status}`)
   console.log(`  events:    ${result.run.events.length}`)
@@ -197,7 +198,7 @@ async function cmdRun(): Promise<number> {
 
 function cmdStatus(): void {
   const disease = getPrimaryDisease()
-  console.log('Lucid status')
+  console.log('Afterimage status')
   console.log(`  mode:          local`)
   console.log(`  attached:      no (use attach — stub)`)
   console.log(`  department:    ${disease.department}`)
@@ -251,7 +252,7 @@ function cmdInspect(): void {
 async function cmdFix(): Promise<number> {
   const parsed = parseFixArgv(process.argv)
   if (!parsed) {
-    console.error('Usage: npm run lucid -- fix <incident-id> [--apply] [--yes] [--rollback]')
+    console.error('Usage: npm run afterimage -- fix <incident-id> [--apply] [--yes] [--rollback]')
     return 1
   }
 
@@ -276,7 +277,7 @@ async function cmdFix(): Promise<number> {
 async function cmdRecheck(): Promise<number> {
   const parsed = parseRecheckArgv(process.argv)
   if (!parsed) {
-    console.error('Usage: npm run lucid -- recheck <incident-id>')
+    console.error('Usage: npm run afterimage -- recheck <incident-id>')
     return 1
   }
 
@@ -296,15 +297,15 @@ async function cmdRecheck(): Promise<number> {
 async function cmdGitty(): Promise<number> {
   const parsed = parseGittyArgv(process.argv)
   if (!parsed) {
-    console.error('Usage: npm run lucid -- gitty push [--message <msg>] [--dry-run]')
+    console.error('Usage: npm run afterimage -- gitty push [--message <msg>] [--dry-run]')
     return 1
   }
   if (parsed.action === 'help') {
     console.log('Gitty — your kitty for git + PRs')
     console.log()
-    console.log('  npm run lucid -- gitty push')
-    console.log('  npm run lucid -- gitty push --message "why this change"')
-    console.log('  npm run lucid -- gitty push --dry-run')
+    console.log('  npm run afterimage -- gitty push')
+    console.log('  npm run afterimage -- gitty push --message "why this change"')
+    console.log('  npm run afterimage -- gitty push --dry-run')
     console.log()
     console.log('Remembered habit: after code changes (and on "gitty push"), commit + explain + push + take care of PRs.')
     return 0
@@ -334,9 +335,9 @@ async function cmdUma(): Promise<number> {
   const parsed = parseUmaArgv(process.argv)
   if (!parsed) {
     console.error(
-      'Usage: npm run lucid -- uma remember --about <part> -- <preference>\n' +
-        '       npm run lucid -- uma show [--about <part>]\n' +
-        '       npm run lucid -- uma forget --about <part>|--id <id>',
+      'Usage: npm run afterimage -- uma remember --about <part> -- <preference>\n' +
+        '       npm run afterimage -- uma show [--about <part>]\n' +
+        '       npm run afterimage -- uma forget --about <part>|--id <id>',
     )
     return 1
   }
@@ -360,13 +361,13 @@ function cmdDepartments(): void {
     }
   }
   console.log()
-  console.log('Shipped detectors: see `lucid departments`.')
+  console.log('Shipped detectors: see `afterimage departments`.')
 }
 
 async function cmdAttach(): Promise<number> {
   const target = process.argv[3]
   if (target !== 'cursor') {
-    console.error('Usage: npm run lucid -- attach cursor')
+    console.error('Usage: npm run afterimage -- attach cursor')
     console.error('Installs Cursor hooks so you can keep prompting normally.')
     return 1
   }
@@ -375,14 +376,14 @@ async function cmdAttach(): Promise<number> {
   await initWorkspaceStore(store)
   const result = await installCursorHooks({ projectRoot: store.projectRoot })
 
-  console.log('Lucid Kitty attached to Cursor')
+  console.log('Afterimage Kitty attached to Cursor')
   console.log(`  hooks:   ${result.hooksJsonPath}`)
   console.log(`  script:  ${result.observeScriptPath}`)
   console.log(`  events:  ${result.mergedEvents.join(', ')}`)
   console.log('')
   console.log('Keep prompting in Cursor as usual.')
   console.log('Kitty will meow (and optionally notify) when a disease is detected.')
-  console.log('Open the dashboard anytime with: npm run lucid -- open')
+  console.log('Open the dashboard anytime with: npm run afterimage -- open')
   return 0
 }
 

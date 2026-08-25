@@ -101,7 +101,7 @@ function beforeText(context: TreatmentAdapterContext): string {
 }
 
 /**
- * Applies instruction-hierarchy treatment to Lucid agent config only —
+ * Applies instruction-hierarchy treatment to Afterimage agent config only —
  * never edits application source files.
  */
 export const instructionsTreatmentAdapter: TreatmentAdapter = {

@@ -40,7 +40,7 @@ export type AgentRuntimeObserveResult = {
 }
 
 /**
- * Agent-runtime adapter — maps a host SDK stream into Lucid AgentEvents.
+ * Agent-runtime adapter — maps a host SDK stream into Afterimage AgentEvents.
  * Detectors consume AgentEvent only; they never import adapter code.
  */
 export type AgentRuntimeAdapter = {

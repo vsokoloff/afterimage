@@ -12,7 +12,7 @@ export type OtlpHttpServerOptions = {
   store: LucidStore
   host?: string
   port?: number
-  /** Default: group spans by OTEL trace id into one Lucid run. */
+  /** Default: group spans by OTEL trace id into one afterimage run. */
   groupBy?: OtelGroupBy
   /** Finish a run after this many ms with no new spans (default 30_000). */
   idleFinishMs?: number
